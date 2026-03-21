@@ -1,0 +1,59 @@
+:root {
+    --filament-color-gray-50: 10, 10, 10;
+    --filament-color-gray-100: 20, 20, 20;
+    --filament-color-gray-200: 30, 30, 30;
+    --filament-color-gray-300: 45, 45, 45;
+    --filament-color-gray-400: 60, 60, 60;
+    --filament-color-gray-500: 80, 80, 80;
+    --filament-color-gray-600: 110, 110, 110;
+    --filament-color-gray-700: 140, 140, 140;
+    --filament-color-gray-800: 180, 180, 180;
+    --filament-color-gray-900: 220, 220, 220;
+    --filament-color-gray-950: 255, 255, 255;
+}
+
+.fi-sidebar {
+    background-color: #000000 !important;
+    border-right: 1px solid #1a1a1a !important;
+}
+
+.fi-topbar {
+    background-color: #000000 !important;
+    border-bottom: 1px solid #1a1a1a !important;
+}
+
+.fi-main {
+    background-color: #000000 !important;
+}
+
+.fi-section {
+    background-color: #0a0a0a !important;
+    border: 1px solid #1a1a1a !important;
+    border-radius: 4px !important;
+}
+
+/* Custom Distressed Effect for Headings (Optional/Subtle) */
+.fi-header-heading {
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 900;
+    color: #ffffff;
+}
+
+/* Custom Gold accents for borders in dark mode */
+.fi-sidebar-item-active {
+    border-left: 3px solid #ffb000 !important;
+}
+
+/* Scrollbar customization */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #000;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #ffb000;
+}

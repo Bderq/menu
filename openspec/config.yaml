@@ -1,0 +1,21 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+context: |
+  Tech stack: Laravel 12, Filament 5, Inertia.js 2, React 19, Tailwind CSS 4
+  Domain: QR Menu and Campaign Management System
+  Convention: Standard Laravel PSR-4, Inertia React pages in resources/js/Pages
+  Database: MySQL (per .env config)
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours

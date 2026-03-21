@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@source "../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php";
+@source "../../storage/framework/views/*.php";
+@source "../**/*.blade.php";
+@source "../**/*.jsx";
+
+@theme {
+    --font-heading: "Archivo Black", sans-serif;
+    --font-script: "Permanent Marker", cursive;
+    --font-mono: "JetBrains Mono", monospace;
+    --font-sans: "Inter", sans-serif;
+
+    --color-pub-gold: #ffb000;
+    --color-pitch-black: #000000;
+    --color-crash-white: #ffffff;
+    --color-off-white: #f8f8f8;
+    --color-acid-blue: #0047ff;
+
+    --radius-sharp: 0px;
+    --radius-sticker: 2px;
+
+    --animate-spin-slow: spin 8s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Custom Utilities for CRASH Pub Style */
+@utility text-grunge {
+    position: relative;
+    background: url("https://www.transparenttextures.com/patterns/black-paper.png");
+    background-clip: text;
+    -webkit-background-clip: text;
+}
+
+@utility text-outline {
+    -webkit-text-stroke: 1px var(--color-pub-gold);
+    color: transparent;
+}
+
+@utility sticker-shadow {
+    box-shadow: 4px 4px 0px 0px var(--color-pub-gold);
+}
+
+@utility heavy-shadow {
+    box-shadow: 6px 6px 0px 0px #000000;
+}
+
+@utility sticker-tag {
+    background: var(--color-pub-gold);
+    color: var(--color-pitch-black);
+    font-weight: 900;
+    text-transform: uppercase;
+    transform: rotate(-2deg);
+    padding: 2px 8px;
+    box-shadow: 2px 2px 0px 0px #000000;
+}
+
+@utility urban-border {
+    border: 2px solid theme('colors.pub-gold');
+}
+
+@utility bg-grunge {
+    background-image: url("https://www.transparenttextures.com/patterns/asfalt-dark.png");
+}
+
+/* Custom hide scrollbar */
+@utility no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+/* Texture Overlays */
+.grunge-texture {
+    background-image: url("https://www.transparenttextures.com/patterns/pinstriped-suit.png");
+    opacity: 0.05;
+}
