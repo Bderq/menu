@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Category extends Model
 {
+    use \SolutionForest\FilamentTree\Concern\ModelTree;
+
     protected $guarded = [];
 
     protected $casts = [
@@ -36,5 +38,20 @@ class Category extends Model
         }
 
         return $this->name;
+    }
+
+    public function determineTitleColumnName(): string
+    {
+        return 'name';
+    }
+
+    public function determineOrderColumnName(): string
+    {
+        return 'sort_order';
+    }
+
+    public static function defaultParentKey()
+    {
+        return null;
     }
 }

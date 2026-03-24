@@ -18,14 +18,13 @@ class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
 
         User::firstOrCreate(
-            ['email' => 'admin@admin.com'],
+            ['email' => 'h.omererturk@gmail.com'],
             [
                 'name' => 'Admin',
-                'password' => bcrypt('password'),
+                'password' => bcrypt('66373553asd'),
             ]
         );
         
         $this->call(MenuSeeder::class);
-        $this->call(CampaignSeeder::class);
     }
 }

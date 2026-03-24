@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, MessageSquare, Send, X, Check, Zap, AlertTriangle, Wheat, Egg, Milk, Bean, Nut, Droplets, Fish, HelpCircle, Leaf, Flame, FlaskConical, Flower, Music } from 'lucide-react';
+import { Filter, MessageSquare, Send, X, Check, Zap, AlertTriangle, Wheat, Egg, Milk, Bean, Nut, Droplets, Fish, HelpCircle, Leaf, Flame, FlaskConical, Flower, Music, ClipboardList } from 'lucide-react';
 
 export default function MenuInteractionDrawer({ onFilterChange, venueName = "MEKAN", isOpen, onOpen, onClose }) {
     const [activeTab, setActiveTab] = useState('filters'); // 'filters' | 'feedback'
@@ -27,6 +27,71 @@ export default function MenuInteractionDrawer({ onFilterChange, venueName = "MEK
 
     const [feedback, setFeedback] = useState('');
     const [feedbackStatus, setFeedbackStatus] = useState('idle'); // idle, sending, success
+
+    const [track, setTrack] = useState(null);
+    const [currentTimeMs, setCurrentTimeMs] = useState(0);
+
+    const fetchTrack = async () => {
+        try {
+            const response = await fetch('/api/now-playing');
+            const data = await response.json();
+            
+            setTrack((prevTrack) => {
+                if (!prevTrack || prevTrack.track !== data.track) {
+                    // New track or first load
+                    setCurrentTimeMs(data.progress_ms || 0);
+                } else if (data.progress_ms) {
+                    // Existing track: only sync if we've drifted by more than 15 seconds (e.g. user seeked)
+                    setCurrentTimeMs((prevTime) => {
+                        if (Math.abs(prevTime - data.progress_ms) > 15000) {
+                            return data.progress_ms;
+                        }
+                        return prevTime; // Keep our smooth local timer
+                    });
+                }
+                return data;
+            });
+        } catch (error) {
+            console.error('Error fetching now playing:', error);
+        }
+    };
+
+    useEffect(() => {
+        if (!isOpen) return;
+        fetchTrack();
+        const interval = setInterval(fetchTrack, 10000);
+        return () => clearInterval(interval);
+    }, [isOpen]);
+
+    // Internal 1s timer for counting seconds between server checks
+    useEffect(() => {
+        if (!isOpen || !track?.is_playing) return;
+
+        const timer = setInterval(() => {
+            setCurrentTimeMs((prev) => {
+                const next = prev + 1000;
+                // If it reached the end, fetch new one earlier (with a slight delay)
+                if (track.duration_ms && next >= track.duration_ms) {
+                    setTimeout(fetchTrack, 1000);
+                    return track.duration_ms;
+                }
+                return next;
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [isOpen, track?.track, track?.is_playing]);
+
+    // Helper to format MS to MM:SS
+    const formatTime = (ms) => {
+        if (!ms || ms < 0) return '00:00';
+        const totalSeconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = Math.floor(totalSeconds % 60);
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    const remainingTimeMs = track?.duration_ms ? Math.max(0, track.duration_ms - currentTimeMs) : 0;
+    const progressPercent = track?.duration_ms ? Math.min(100, (currentTimeMs / track.duration_ms) * 100) : 0;
 
     const handleFilterToggle = (key) => {
         const newFilters = { ...filters, [key]: !filters[key] };
@@ -72,7 +137,8 @@ export default function MenuInteractionDrawer({ onFilterChange, venueName = "MEK
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={onClose}
-                            className="fixed inset-0 bg-pitch-black/60 z-[60] cursor-pointer"
+                            className="fixed inset-0 bg-pitch-black/60 cursor-pointer"
+                            style={{ zIndex: 140 }}
                         />
 
                         {/* Right 85% Drawer Container */}
@@ -81,7 +147,8 @@ export default function MenuInteractionDrawer({ onFilterChange, venueName = "MEK
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed top-0 right-0 h-full w-[85%] z-[61] flex"
+                            className="fixed top-0 right-0 h-full w-[85%] flex"
+                            style={{ zIndex: 150 }}
                         >
                             <div className="relative w-full h-full filter drop-shadow-[-10px_0_20px_rgba(0,0,0,0.5)]">
                                 {/* LAYER 1: The Black Ripped Border (Behind) */}
@@ -112,26 +179,47 @@ export default function MenuInteractionDrawer({ onFilterChange, venueName = "MEK
                                         className="bg-pitch-black p-4 pl-5 flex items-center gap-3 relative overflow-hidden shrink-0 border-b-4 border-white rotate-1 scale-[1.02] -mx-1 -mt-1 shadow-xl z-20 cursor-pointer group hover:bg-black/95 transition-colors"
                                     >
                                         {/* Album Art Placeholder - Ultra Compact */}
-                                        <div className="w-14 h-14 shrink-0 bg-pub-gold border-4 border-white flex items-center justify-center shadow-[3px_3px_0_0_rgba(255,255,255,0.5)]">
-                                            <Music size={24} strokeWidth={2.5} className="text-pitch-black" />
+                                        <div className="w-14 h-14 shrink-0 bg-pub-gold border-4 border-white flex items-center justify-center shadow-[3px_3px_0_0_rgba(255,255,255,0.5)] overflow-hidden">
+                                            {track?.image ? (
+                                                <img src={track.image} alt="Art" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <Music size={24} strokeWidth={2.5} className="text-pitch-black" />
+                                            )}
                                         </div>
 
                                         {/* Text Info */}
                                         <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
                                             <h2 className="text-pub-gold font-heading text-xl uppercase tracking-tighter leading-none mb-1 drop-shadow-[2px_2px_0_rgba(255,255,255,0.2)] break-words line-clamp-2">
-                                                DUMAN
+                                                {track?.artist || 'VENUE RADIO'}
                                             </h2>
                                             <div className="flex w-full">
                                                 <div className="bg-white text-pitch-black px-1.5 py-0.5 font-mono text-[8px] font-bold uppercase tracking-widest mb-1 transform -skew-x-6 border-b-2 border-r-2 border-gray-400 truncate max-w-full">
-                                                    SENİ KENDİME SAKLADIM
+                                                    {track?.track || 'STAY TUNED'}
                                                 </div>
                                             </div>
-                                            {/* MTV Style Metadata line */}
-                                            <div className="w-full flex items-center gap-2 text-white/50 font-mono text-[8px]">
-                                                <span className="border border-white/30 px-1 rounded-[1px]">HD</span>
-                                                <span className="tracking-widest">STEREO</span>
-                                                <div className="flex-1 h-px bg-white/20 relative top-[0.5px]" />
-                                                <span>03:45</span>
+                                            {/* MTV Style Metadata line / Updated with Progress & Countdown */}
+                                            <div className="w-full flex items-center gap-3 text-white font-mono text-[8px] mt-1">
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                    <span className="border border-white/30 px-1 rounded-[1px] opacity-50">HD</span>
+                                                    <span className="tracking-widest flex items-center gap-1">
+                                                        {track?.is_playing && <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} className="w-1.5 h-1.5 bg-red-500 rounded-full inline-block" />}
+                                                        {track?.is_playing ? 'LIVE' : 'STEREO'}
+                                                    </span>
+                                                </div>
+                                                
+                                                {/* Progress Bar */}
+                                                <div className="flex-1 h-0.5 bg-white/20 relative rounded-full overflow-hidden">
+                                                    <motion.div 
+                                                        className="absolute left-0 top-0 h-full bg-white opacity-60"
+                                                        style={{ width: `${progressPercent}%` }}
+                                                        transition={{ type: 'tween', duration: 1 }}
+                                                    />
+                                                </div>
+                                                
+                                                {/* Countdown Timer */}
+                                                <span className="tabular-nums opacity-80 min-w-[30px] text-right">
+                                                    {formatTime(remainingTimeMs)}
+                                                </span>
                                             </div>
                                         </div>
 
@@ -142,22 +230,30 @@ export default function MenuInteractionDrawer({ onFilterChange, venueName = "MEK
                                     </div>
 
                                     {/* Tabs */}
-                                    <div className="flex border-b-8 border-pitch-black shrink-0 bg-pitch-black gap-1 p-1 pl-6">
+                                    <div className="flex border-b-8 border-pitch-black shrink-0 bg-pitch-black gap-1 p-1 pl-4 sm:pl-6 overflow-hidden">
                                         <button
                                             onClick={() => setActiveTab('filters')}
-                                            className={`flex-1 py-4 font-heading text-xl uppercase tracking-wider flex items-center justify-center gap-2 transition-all clip-path-slant
+                                            className={`flex-1 py-3 font-heading text-base sm:text-lg uppercase tracking-tight flex items-center justify-center gap-1.5 transition-all clip-path-slant
                                             ${activeTab === 'filters' ? 'bg-pub-gold text-pitch-black -rotate-1 translate-y-1' : 'bg-white text-pitch-black/50 hover:bg-gray-200 rotate-0'}`}
                                             style={{ clipPath: 'polygon(5% 0, 100% 0, 95% 100%, 0% 100%)' }}
                                         >
-                                            <Filter size={24} strokeWidth={2.5} /> Filtre
+                                            <Filter size={20} strokeWidth={2.5} /> Filtre
                                         </button>
                                         <button
                                             onClick={() => setActiveTab('feedback')}
-                                            className={`flex-1 py-4 font-heading text-xl uppercase tracking-wider flex items-center justify-center gap-2 transition-all clip-path-slant
+                                            className={`flex-1 py-3 font-heading text-base sm:text-lg uppercase tracking-tight flex items-center justify-center gap-1.5 transition-all clip-path-slant
                                             ${activeTab === 'feedback' ? 'bg-pub-gold text-pitch-black rotate-1 translate-y-1' : 'bg-white text-pitch-black/50 hover:bg-gray-200 rotate-0'}`}
                                             style={{ clipPath: 'polygon(5% 0, 100% 0, 95% 100%, 0% 100%)' }}
                                         >
-                                            <MessageSquare size={24} strokeWidth={2.5} /> Ses Ver
+                                            <MessageSquare size={20} strokeWidth={2.5} /> Ses Ver
+                                        </button>
+                                        <button
+                                            onClick={() => setActiveTab('survey')}
+                                            className={`flex-1 py-3 font-heading text-base sm:text-lg uppercase tracking-tight flex items-center justify-center gap-1.5 transition-all clip-path-slant
+                                            ${activeTab === 'survey' ? 'bg-pub-gold text-pitch-black rotate-1 translate-y-1' : 'bg-white text-pitch-black/50 hover:bg-gray-200 rotate-0'}`}
+                                            style={{ clipPath: 'polygon(5% 0, 100% 0, 95% 100%, 0% 100%)' }}
+                                        >
+                                            <ClipboardList size={18} strokeWidth={2.5} /> Anket
                                         </button>
                                     </div>
 
@@ -274,6 +370,31 @@ export default function MenuInteractionDrawer({ onFilterChange, venueName = "MEK
                                                         </AnimatePresence>
                                                     </div>
 
+                                                </motion.div>
+                                            ) : activeTab === 'survey' ? (
+                                                <motion.div
+                                                    key="survey"
+                                                    initial={{ opacity: 0, x: 20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    exit={{ opacity: 0, x: -20 }}
+                                                    className="h-full flex flex-col items-center justify-center text-center pb-20 relative"
+                                                >
+                                                    {/* Warning Icon */}
+                                                    <div className="w-24 h-24 mb-6 bg-pitch-black text-pub-gold flex items-center justify-center border-4 border-pub-gold shadow-[8px_8px_0_0_#000] rotate-3 relative overflow-hidden transition-transform duration-500 hover:rotate-12 hover:scale-110">
+                                                        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #000, #000 10px, #FFD700 10px, #FFD700 20px)' }} />
+                                                        <AlertTriangle size={48} strokeWidth={2} className="relative z-10" />
+                                                    </div>
+                                                    
+                                                    {/* Text Box */}
+                                                    <div className="bg-white border-4 border-pitch-black p-6 shadow-[8px_8px_0_0_#ffb000] -rotate-2 relative z-10 max-w-sm">
+                                                        <h3 className="font-heading text-3xl sm:text-4xl uppercase mb-3 leading-none text-pitch-black block">YAPIM AŞAMASINDA</h3>
+                                                        <div className="h-1 w-12 bg-pitch-black mx-auto mb-3 absolute top-0 left-0"></div>
+                                                        <div className="h-1 w-12 bg-pitch-black mx-auto mb-3 absolute bottom-0 right-0"></div>
+                                                        
+                                                        <p className="font-mono text-sm text-pitch-black/80 font-bold border-t-2 border-pitch-black/10 pt-3">
+                                                            Sizin için daha iyi hizmet verebilmek adına anket sistemimizi hazırlıyoruz. Çok yakında yayında!
+                                                        </p>
+                                                    </div>
                                                 </motion.div>
                                             ) : (
                                                 <motion.div

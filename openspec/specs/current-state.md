@@ -26,6 +26,7 @@ Sistem şu anda temel olarak **Katalog (Menü)** ve **Kampanya** yönetimi üzer
 
 - **`categories` (Kategoriler):**
   - Hiyerarşik yapıdadır (`parent_id` ile kendi kendine referans).
+  - **Filament Tree** eklentisi ile sürükle-bırak (drag-and-drop) hiyerarşi yönetimi desteği eklenmiştir.
   - `products` tablosuyla (1:N) ilişkilidir. Türü (örn: *food, drink, campaign*) tutulur.
 
 - **`products` (Ürünler - Master Liste):**
@@ -61,6 +62,7 @@ Mevcut projede Stok, Sipariş (Satış) veya Gelişmiş Raporlama modülleri **H
    - Belirli şubelerde, günlerde ve saatlerde devreye giren dinamik fiyatlandırma motoru.
    - 4 Farklı Mekanizma: *Fixed Price*, *Percentage*, *Bundle*, *X get Y*.
    - Menü üzerinde kampanyaların indirimli fiyatlarının dinamik hesaplanıp (`MenuController` üzerinden) gösterilmesi.
+    - **Medya Operasyon (Visual Audit Center):** 100+ ürünün görsel eksiklerini tek ekranda görme ve PC'den tablo satırına sürükle-bırak (Drag & Drop) yöntemiyle modal açmadan anında fotoğraf yükleme/güncelleme (WebP ve 800px otomatik optimizasyon dahil).
 3. **Mağaza (Store) Yönetim Altyapısı (Public):**
    - URL tabanlı (`/menu/{store_slug}`) çoklu şube desteği ve şubeye özel katalog sunumu.
 
@@ -85,3 +87,9 @@ Mevcut projede Stok, Sipariş (Satış) veya Gelişmiş Raporlama modülleri **H
 ### C. Validasyon ve Hardcode Kullanımları
 - Dinamik işleyiş yerine kod içi *hardcoded* mantık kontrolleri var (Örn: `$mainCat->type === 'campaign'` veya `$key = strtolower($mainCat->type); // 'drink' or 'food'`). Bunların Enum sınıfları üzerinden yönetilmesi genişletilebilirliği artırır.
 - Çekilen id ve request'ler için `FormRequest` yapıları eksik. İleride açılacak API veya Admin Controller kısımlarında güçlü bir request validasyon mimarisi oturtulmalıdır.
+
+---
+
+## 4. Sunucu ve Geliştirme Altyapısı (Infrastructure & UI)
+- **Dosya Yükleme Kapasitesi (Nginx & PHP):** Medya merkezinde devasa (15MB+) raw fotoğrafların rahatça sürüklenip bırakılabilmesi için Nginx `client_max_body_size`, PHP `upload_max_filesize` ve Livewire limitleri **200MB** seviyesine ayarlandı. Sunucu arkada bu dosyaları alıp anında 70-80 KB'lık `.webp` (800x800) formatına dönüştürerek mükemmel optimizasyon sağlamaktadır.
+- **Z-Index ve Tailwind JIT Bypass:** Proje `npm run dev` ile canlı derleme yapılmadan çalıştırıldığı için, yeni oluşturulan arbitrary (özel) Tailwind sınıfları (Örn: `w-[100px]`, `z-[150]`) derlenemiyor ve tarayıcı tarafından yok sayılıyordu. Bu durum, özellikle **Müşteri Menüsü (Frontend)** üzerindeki "Ses Ver / Diyet Paneli"nin üst menü altında ezilmesine ve Media Hub'daki fotoğrafların devasa patlamasına yol açmıştı. Bu problemleri kökünden çözmek için kritik UI elementlerinin derinlikleri ve boyutlandırmaları doğrudan dinamik **Inline Style (`style={{ ... }}`)** metodolojisine geçirildi.

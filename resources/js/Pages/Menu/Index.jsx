@@ -12,6 +12,8 @@ const Icon = ({ name, ...props }) => {
     return <LucideIcon {...props} />;
 };
 
+import { useTracking } from '@/Hooks/useTracking';
+
 export default function Index({ menuData = {}, store = null }) {
     const [mainTab, setMainTab] = useState('campaign'); // 'campaign' | 'drink' | 'food'
     const [activeMainCategory, setActiveMainCategory] = useState(null);
@@ -21,6 +23,11 @@ export default function Index({ menuData = {}, store = null }) {
     const [activeFilters, setActiveFilters] = useState({ vegan: false, vegetarian: false, glutenFree: false });
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [selectedCampaign, setSelectedCampaign] = useState(null);
+
+    // Analytics Tracking
+    const { trackClick } = useTracking(
+        activeSubCategory?.includes('-') ? activeSubCategory.split('-').pop() : activeSubCategory
+    );
 
     const categoryRefs = useRef({});
     const navRefs = useRef({ main: null, sub: null });
@@ -129,6 +136,9 @@ export default function Index({ menuData = {}, store = null }) {
     const openDetails = (item) => {
         setSelectedItem(item);
         setSelectedOption(item.options ? item.options[0] : null);
+        
+        // Track Product View (mapped to click in this UI as it opens detail)
+        trackClick('Product', item.id);
     };
 
     return (
@@ -337,12 +347,14 @@ export default function Index({ menuData = {}, store = null }) {
                         <motion.div
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             onClick={() => setSelectedItem(null)}
-                            className="fixed inset-0 bg-pitch-black/80 backdrop-blur-md z-[100]"
+                            className="fixed inset-0 bg-pitch-black/80 backdrop-blur-md"
+                            style={{ zIndex: 200 }}
                         />
                         <motion.div
                             initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
                             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                            className="fixed bottom-0 left-0 right-0 bg-off-white border-t-8 border-pitch-black z-[101] max-w-md mx-auto rounded-t-[40px] overflow-hidden shadow-[0_-20px_60px_rgba(0,0,0,0.5)]"
+                            className="fixed bottom-0 left-0 right-0 bg-off-white border-t-8 border-pitch-black max-w-md mx-auto rounded-t-[40px] overflow-hidden shadow-[0_-20px_60px_rgba(0,0,0,0.5)]"
+                            style={{ zIndex: 201 }}
                         >
                             {/* Texture Overlay */}
                             <div className="absolute inset-0 pointer-events-none grunge-texture opacity-10"></div>

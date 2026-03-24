@@ -49,7 +49,7 @@ class CategoryResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ListCategories::route('/'),
+            'index' => \App\Filament\Resources\Categories\Pages\TreeCategories::route('/'),
             'create' => CreateCategory::route('/create'),
             'view' => ViewCategory::route('/{record}'),
             'edit' => EditCategory::route('/{record}/edit'),

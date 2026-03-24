@@ -19,44 +19,28 @@ class MenuController extends Controller
         ]);
     }
 
-    public function nowPlaying()
+    public function nowPlaying(\App\Services\SpotifyService $spotifyService)
     {
-        return \Illuminate\Support\Facades\Cache::remember('now_playing', 10, function () {
-            $apiKey = env('LASTFM_API_KEY');
-            $user = env('LASTFM_USER');
+        try {
+            $track = $spotifyService->getNowPlaying();
 
-            if (!$apiKey || !$user) {
-                return null;
+            if ($track) {
+                return [
+                    'artist' => $track['artist'] ?? 'Unknown',
+                    'track' => $track['name'] ?? 'Unknown',
+                    'album' => $track['album'] ?? '',
+                    'duration' => $track['duration'] ?? '00:00',
+                    'duration_ms' => $track['duration_ms'] ?? 0,
+                    'progress_ms' => $track['progress_ms'] ?? 0,
+                    'image' => $track['album_art'] ?? '',
+                    'is_playing' => $track['is_playing'] ?? false,
+                    'url' => $track['url'] ?? '',
+                ];
             }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('NowPlaying fetch failed: ' . $e->getMessage());
+        }
 
-            try {
-                $response = \Illuminate\Support\Facades\Http::get("https://ws.audioscrobbler.com/2.0/", [
-                    'method' => 'user.getrecenttracks',
-                    'user' => $user,
-                    'api_key' => $apiKey,
-                    'format' => 'json',
-                    'limit' => 1
-                ]);
-
-                if ($response->successful()) {
-                    $data = $response->json();
-                    $track = $data['recenttracks']['track'][0] ?? null;
-
-                    if ($track) {
-                        return [
-                            'artist' => $track['artist']['#text'] ?? 'Unknown',
-                            'track' => $track['name'] ?? 'Unknown',
-                            'album' => $track['album']['#text'] ?? '',
-                            'image' => $track['image'][2]['#text'] ?? '', // medium size
-                            'is_playing' => isset($track['@attr']['nowplaying']) && $track['@attr']['nowplaying'] === 'true'
-                        ];
-                    }
-                }
-            } catch (\Exception $e) {
-                // Silently fail or log
-            }
-
-            return null;
-        });
+        return null;
     }
 }

@@ -28,6 +28,18 @@ class StoreProducts extends ListRecords
         $this->store = $storeParam instanceof Store ? $storeParam : Store::findOrFail($storeParam);
     }
 
+    public function reorderTable(array $order, int|string|null $draggedRecordKey = null): void
+    {
+        $currentStore = $this->store;
+        
+        foreach ($order as $index => $recordId) {
+            \Illuminate\Support\Facades\DB::table('store_products')
+                ->where('store_id', $currentStore->id)
+                ->where('product_id', $recordId)
+                ->update(['sort_order' => $index]);
+        }
+    }
+
     public function getTitle(): string
     {
         return "{$this->store->name} - Ürün Yönetimi";
@@ -37,73 +49,115 @@ class StoreProducts extends ListRecords
     {
         $currentStore = $this->store;
 
+        $table = $table
+            ->query(fn () => \App\Models\Product::query()
+                ->select('products.*', 'store_products.sort_order as pivot_sort_order')
+                ->leftJoin('store_products', function ($join) use ($currentStore) {
+                    $join->on('products.id', '=', 'store_products.product_id')
+                         ->where('store_products.store_id', '=', $currentStore->id);
+                })
+                ->with([
+                    'stores' => fn($q) => $q->where('stores.id', $this->store->id),
+                    'portions' => fn($q) => $q->where('store_id', $this->store->id),
+                    'category.parent'
+                ])
+            )
+            ->defaultSort('pivot_sort_order')
+            ->modifyQueryUsing(function (Builder $query) {
+                // Additional global modify if needed
+            });
+
+        // Sadece kategori filtreli iken (Tab veya Filtre) Reorder işlemini aktif et
+        if ($this->activeTab !== 'all' || !empty($this->getTableFilterState('category')['value'])) {
+            $table->reorderable('pivot_sort_order');
+        }
+
         return $table
-            ->query(fn () => \App\Models\Product::query()) // Start with all products
             ->columns([
                 ImageColumn::make('image_path')
                     ->label('')
+                    ->disk('public')
                     ->square()
-                    ->width(40),
+                    ->width(32)
+                    ->toggleable(),
                 
                 TextColumn::make('name')
                     ->label('Ürün Adı')
-                    ->description(fn ($record) => $record->category?->name)
-                    ->searchable(),
+                    ->searchable()
+                    ->weight('bold')
+                    ->wrap(),
+
+                TextColumn::make('category.name')
+                    ->label('Kategori')
+                    ->description(fn ($record) => $record->category?->parent?->name ? "{$record->category->parent->name} >" : null)
+                    ->toggleable()
+                    ->searchable()
+                    ->sortable(),
+
+                ToggleColumn::make('store_active')
+                    ->label('Aktif')
+                    ->onColor('success')
+                    ->offColor('danger')
+                    ->getStateUsing(function ($record) {
+                        return $record->stores->first()?->pivot?->is_active ?? false;
+                    })
+                    ->updateStateUsing(function ($record, $state) use ($currentStore) {
+                        $record->stores()->syncWithoutDetaching([$currentStore->id => ['is_active' => $state]]);
+                    })
+                    ->alignCenter()
+                    ->width(80),
+
+                ToggleColumn::make('is_featured')
+                    ->label('Star')
+                    ->onIcon('heroicon-s-star')
+                    ->offIcon('heroicon-o-star')
+                    ->onColor('warning')
+                    ->getStateUsing(function ($record) {
+                        return $record->stores->first()?->pivot?->is_featured ?? false;
+                    })
+                    ->updateStateUsing(function ($record, $state) use ($currentStore) {
+                        $record->stores()->syncWithoutDetaching([$currentStore->id => ['is_featured' => $state]]);
+                    })
+                    ->alignCenter()
+                    ->width(80),
 
                 TextColumn::make('portions_summary')
-                    ->label('Fiyat / Porsiyon')
-                    ->getStateUsing(function ($record) use ($currentStore) {
-                        $portions = $record->portions()->where('store_id', $currentStore->id)->orderBy('sort_order')->get();
-                        if ($portions->isEmpty()) return 'Fiyat Girilmemiş';
+                    ->label('Fiyatlar')
+                    ->getStateUsing(function ($record) {
+                        $portions = $record->portions->sortBy('sort_order');
+                        if ($portions->isEmpty()) return '-';
                         
                         $count = $portions->count();
                         $firstPrice = number_format($portions->first()->price, 2) . ' ₺';
                         
                         return $count > 1 ? "{$firstPrice} (+{$count})" : $firstPrice;
                     })
-                    ->badge()
-                    ->color('success'),
-
-                ToggleColumn::make('store_active')
-                    ->label('Aktif')
-                    ->onColor('success')
-                    ->offColor('danger')
-                    ->getStateUsing(function ($record) use ($currentStore) {
-                        return $record->stores->where('id', $currentStore->id)->first()?->pivot?->is_active ?? false;
-                    })
-                    ->updateStateUsing(function ($record, $state) use ($currentStore) {
-                        $record->stores()->syncWithoutDetaching([$currentStore->id => ['is_active' => $state]]);
-                    })
-                    ->alignCenter(),
-
-                ToggleColumn::make('is_featured')
-                    ->label('Öne Çıkan')
-                    ->onIcon('heroicon-s-star')
-                    ->offIcon('heroicon-o-star')
-                    ->onColor('warning')
-                    ->getStateUsing(function ($record) use ($currentStore) {
-                        return $record->stores->where('id', $currentStore->id)->first()?->pivot?->is_featured ?? false;
-                    })
-                    ->updateStateUsing(function ($record, $state) use ($currentStore) {
-                        $record->stores()->syncWithoutDetaching([$currentStore->id => ['is_featured' => $state]]);
-                    })
-                    ->alignCenter(),
-
-                TextInputColumn::make('sort_order')
-                    ->label('Sıra')
-                    ->type('number')
-                    ->getStateUsing(function ($record) use ($currentStore) {
-                        return $record->stores->where('id', $currentStore->id)->first()?->pivot?->sort_order ?? 0;
-                    })
-                    ->updateStateUsing(function ($record, $state) use ($currentStore) {
-                        $record->stores()->syncWithoutDetaching([$currentStore->id => ['sort_order' => $state]]);
-                    })
-                    ->alignCenter()
-                    ->width(80),
+                    ->color('success')
+                    ->fontFamily('mono')
+                    ->alignRight()
+                    ->width(120),
             ])
             ->filters([
                 \Filament\Tables\Filters\SelectFilter::make('category')
-                    ->relationship('category', 'name')
+                    ->label('Kategori')
+                    ->options(fn() => \App\Models\Category::all()->pluck('hierarchical_name', 'id'))
+                    ->searchable()
+                    ->preload()
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (empty($data['value'])) {
+                            return $query;
+                        }
+
+                        $category = \App\Models\Category::with('children')->find($data['value']);
+                        if (! $category) return $query;
+
+                        $ids = [$category->id];
+                        if ($category->children->isNotEmpty()) {
+                            $ids = array_merge($ids, $category->children->pluck('id')->toArray());
+                        }
+
+                        return $query->whereIn('category_id', $ids);
+                    }),
             ])
             ->actions([
                 \Filament\Actions\EditAction::make()
@@ -148,13 +202,16 @@ class StoreProducts extends ListRecords
 
     public function getTabs(): array
     {
-        // Reuse category tabs if possible, but localized for the store
-        $categories = \App\Models\Category::all();
+        $categories = \App\Models\Category::whereNull('parent_id')->get();
         $tabs = ['all' => \Filament\Schemas\Components\Tabs\Tab::make('Tüm Menü')];
 
         foreach ($categories as $category) {
             $tabs[$category->slug] = \Filament\Schemas\Components\Tabs\Tab::make($category->name)
-                ->query(fn ($query) => $query->where('category_id', $category->id));
+                ->query(function ($query) use ($category) {
+                    $categoryIds = [$category->id];
+                    $categoryIds = array_merge($categoryIds, $category->children->pluck('id')->toArray());
+                    return $query->whereIn('category_id', $categoryIds);
+                });
         }
 
         return $tabs;

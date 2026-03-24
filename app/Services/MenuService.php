@@ -71,7 +71,13 @@ class MenuService
                     $subcategories = [];
                     foreach ($group->children as $sub) {
                         $items = [];
-                        foreach ($sub->products as $product) {
+                        // Ürünleri mağazaya özel sort_order'a göre sırala
+                        $sortedProducts = $sub->products->sortBy(function ($product) use ($store) {
+                            $sp = $product->stores->first(fn($s) => $s->id === $store->id);
+                            return $sp?->pivot?->sort_order ?? 999999;
+                        });
+
+                        foreach ($sortedProducts as $product) {
                             $sp = $product->stores->find($store->id);
                             if ($sp) {
                                 $items[] = $this->formatProduct($product, $sp->pivot, $store->id);

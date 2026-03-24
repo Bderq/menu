@@ -1,0 +1,5 @@
+schema: task-slug
+created: 2026-03-21
+title: Admin UI Refinement & Category Tree View
+status: completed
+description: Admin panel login credentials update and category management with drag-and-drop tree view.

@@ -9,14 +9,15 @@ We will create a dedicated **"Media Hub"** resource in Filament. This is not a s
 ### 1. Unified Table View
 A single list containing all products with columns designed for visual status:
 - **Product Name:** Standard text search/sort.
-- **Thumbnail Column:** Inline `FileUpload` for the main `image_path`.
-- **Card/Detail Column:** Inline `FileUpload` for the first item of the `gallery`.
+- **Thumbnail Column:** High-speed inline drag-and-drop for the main `image_path`.
+- **Card/Detail Column:** High-speed inline drag-and-drop for multiple items in the `gallery`.
 - **Visual Status:** Color-coded badges (e.g., 🚨 Missing All, ⚠️ Missing Gallery, ✅ Complete).
 
 ### 2. Operational Features
-- **In-Place Uploads:** Change images directly from the table without navigating away.
+- **In-Place Uploads:** Change images directly from the table by dragging from PC (modal-free).
+- **Automated Optimization:** Powered by Intervention Image v3. Auto-converts to WebP, resizes to 800px, and enforces SEO-friendly naming.
 - **"The 100-Product Speed" Filter:** A one-click filter to only show products with missing visual assets.
-- **Smart Binding Integration:** All uploads through this hub will follow the predictable naming (`slug.webp`) and optimization rules (300KB, 800px, WebP).
+- **Live Feedback:** Instant preview and progress spinners during upload.
 
 ### 3. Navigation
 Instead of hiding this under the standard product list, it will have its own top-level menu entry: **"Medya Operasyon"** to signify its importance in the content workflow.

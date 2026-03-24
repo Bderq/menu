@@ -40,7 +40,7 @@ export default function NowPlaying() {
 
     useEffect(() => {
         fetchTrack();
-        const interval = setInterval(fetchTrack, 20000);
+        const interval = setInterval(fetchTrack, 10000);
         return () => clearInterval(interval);
     }, [prevTrackId]);
 
@@ -152,7 +152,13 @@ export default function NowPlaying() {
                                     </span>
                                 </div>
                                 <div className="font-heading text-xs uppercase leading-none truncate text-pitch-black pr-2">
-                                    {track.track}
+                                    {track.url ? (
+                                        <a href={track.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                            {track.track}
+                                        </a>
+                                    ) : (
+                                        track.track
+                                    )}
                                 </div>
                                 <div className="font-mono text-[9px] text-pitch-black/60 truncate uppercase">
                                     {track.artist}

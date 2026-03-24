@@ -15,11 +15,13 @@
 .fi-sidebar {
     background-color: #000000 !important;
     border-right: 1px solid #1a1a1a !important;
+    z-index: 40 !important;
 }
 
 .fi-topbar {
     background-color: #000000 !important;
     border-bottom: 1px solid #1a1a1a !important;
+    z-index: 20 !important;
 }
 
 .fi-main {
@@ -54,6 +56,51 @@
     background: #000;
 }
 
-::-webkit-scrollbar-thumb {
-    background: #ffb000;
+/* Media Operasyon Special UI */
+[slug="media-hub"] .fi-ta-content {
+    background: transparent !important;
+}
+
+[slug="media-hub"] .fi-ta-header [role="row"] {
+    background: #0a0a0a !important;
+    border-bottom: 2px solid #1a1a1a !important;
+}
+
+[slug="media-hub"] .fi-ta-record {
+    background: #0d0d0d !important;
+    margin-bottom: 12px !important;
+    border: 1px solid #1a1a1a !important;
+    border-radius: 16px !important;
+    transition: all 0.3s ease !important;
+    overflow: hidden !important;
+}
+
+[slug="media-hub"] .fi-ta-record:hover {
+    background: #111111 !important;
+    border-color: #ffb00044 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5) !important;
+}
+
+[slug="media-hub"] .fi-ta-record td {
+    padding-top: 20px !important;
+    padding-bottom: 20px !important;
+    border-bottom: none !important;
+}
+
+/* Hide table borders and separators */
+[slug="media-hub"] table {
+    border-spacing: 0 12px !important;
+    border-collapse: separate !important;
+}
+
+[slug="media-hub"] .fi-ta-table {
+    border: none !important;
+}
+
+/* Custom indicator for the dropzone container */
+.media-drop-zone-container {
+    position: relative;
+    padding: 4px;
+    border-radius: 12px;
 }

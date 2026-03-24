@@ -9,8 +9,10 @@
         "php": "^8.2",
         "filament/filament": "^5.1",
         "inertiajs/inertia-laravel": "^2.0",
+        "intervention/image": "^3.11",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "solution-forest/filament-tree": "^4.0",
         "tightenco/ziggy": "^2.6"
     },
     "require-dev": {

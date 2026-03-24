@@ -36,6 +36,7 @@ class MediaHubResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->extraAttributes(['class' => 'media-hub-table-special'])
             ->columns([
                 TextColumn::make('name')
                     ->label('Ürün Adı')
@@ -43,65 +44,13 @@ class MediaHubResource extends Resource
                     ->sortable()
                     ->description(fn (Product $record): string => $record->category?->name ?? 'Kategorisiz'),
                 
-                ImageColumn::make('image_path')
-                    ->label('Thumbnail')
-                    ->disk('public')
-                    ->square()
-                    ->size(75)
-                    ->placeholder('📸 YÜKLE')
-                    ->extraImgAttributes([
-                        'class' => 'border-2 border-dashed border-gray-600 rounded-lg hover:border-primary-500 transition-colors cursor-pointer',
-                        'style' => 'background: rgba(255,255,255,0.05)'
-                    ])
-                    ->action(Action::make('update_thumbnail_column')
-                        ->modalHeading(fn (Product $record) => $record->name . ' - Thumbnail Yükle')
-                        ->modalWidth('xl')
-                        ->modalSubmitActionLabel('Tamamla')
-                        ->form([
-                            FileUpload::make('image_path')
-                                ->label('Görseli buraya sürükleyip bırakın')
-                                ->image()
-                                ->directory('products/thumbnails')
-                                ->maxSize(1024)
-                                ->imageResizeMode('cover')
-                                ->imageResizeTargetWidth(800)
-                                ->getUploadedFileNameForStorageUsing(fn ($file, $record) => Str::slug($record->name) . '.webp')
-                                ->required(),
-                        ])
-                        ->action(fn (Product $record, array $data) => $record->update(['image_path' => $data['image_path']]))
-                    ),
+                \Filament\Tables\Columns\ViewColumn::make('image_path')
+                    ->label('Thumbnail (Sürükle Bırak)')
+                    ->view('filament.tables.columns.inline-thumbnail'),
 
-                ImageColumn::make('gallery')
-                    ->label('Kart Görseli')
-                    ->disk('public')
-                    ->circular()
-                    ->stacked()
-                    ->limit(3)
-                    ->size(75)
-                    ->placeholder('🖼️ YÜKLE')
-                    ->extraImgAttributes([
-                        'class' => 'border-2 border-dashed border-gray-600 rounded-lg hover:border-primary-500 transition-colors cursor-pointer',
-                        'style' => 'background: rgba(255,255,255,0.05)'
-                    ])
-                    ->action(Action::make('update_gallery_column')
-                        ->modalHeading(fn (Product $record) => $record->name . ' - Kart Görselleri Yükle')
-                        ->modalWidth('2xl')
-                        ->modalSubmitActionLabel('Galeriye Ekle')
-                        ->form([
-                            FileUpload::make('gallery')
-                                ->label('Görselleri (tek veya çoklu) buraya sürükleyin')
-                                ->image()
-                                ->multiple()
-                                ->reorderable()
-                                ->directory('products/gallery')
-                                ->maxSize(1024)
-                                ->imageResizeMode('cover')
-                                ->imageResizeTargetWidth(800)
-                                ->getUploadedFileNameForStorageUsing(fn ($file, $record) => Str::slug($record->name) . '-gallery-' . time() . '-' . Str::random(4) . '.webp')
-                                ->required(),
-                        ])
-                        ->action(fn (Product $record, array $data) => $record->update(['gallery' => $data['gallery']]))
-                    ),
+                \Filament\Tables\Columns\ViewColumn::make('gallery')
+                    ->label('Galeri (Sürükle Bırak)')
+                    ->view('filament.tables.columns.inline-gallery'),
 
                 TextColumn::make('status')
                     ->label('Durum')
