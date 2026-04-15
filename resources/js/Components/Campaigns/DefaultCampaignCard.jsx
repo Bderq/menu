@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as LucideIcons from 'lucide-react';
 
@@ -10,30 +10,68 @@ const Icon = ({ name, ...props }) => {
 export default function DefaultCampaignCard({ campaign, onClose, openDetails }) {
     const items = campaign.subcategories?.[0]?.items || [];
     const isBundle = campaign.type === 'bundle';
+    const isCollective = campaign.type === 'collective';
 
-    // Calculate total values for footer
     const totalListPrice = items.reduce((sum, i) => sum + (parseFloat(i.price) || 0), 0);
     const campaignPrice = parseFloat(campaign.value || 0);
+
+    // Expert Body Scroll Lock (Prevents Safari/Chrome elastic scroll)
+    useEffect(() => {
+        const originalStyle = window.getComputedStyle(document.body).overflow;
+        const scrollY = window.scrollY;
+        
+        // Block scrolling on body and html
+        document.documentElement.style.overflow = 'hidden';
+        document.documentElement.style.overscrollBehavior = 'none';
+        document.body.style.overflow = 'hidden';
+        document.body.style.overscrollBehavior = 'none';
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = '100%';
+
+        return () => {
+            document.documentElement.style.overflow = originalStyle;
+            document.documentElement.style.overscrollBehavior = '';
+            document.body.style.overflow = originalStyle;
+            document.body.style.overscrollBehavior = '';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            window.scrollTo(0, scrollY);
+        };
+    }, []);
 
     return (
         <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex flex-col bg-off-white"
+            className="fixed inset-0 z-[200] flex flex-col bg-off-white h-[100dvh] overflow-hidden"
+            style={{ touchAction: 'none', overscrollBehavior: 'contain' }} // Stop touch/scroll leakage
         >
             {/* Magazine Cover Hero */}
             <div className="relative w-full aspect-[4/3] bg-pitch-black overflow-hidden flex-shrink-0">
-                <img
-                    src={campaign.image ? (campaign.image.startsWith('http') ? campaign.image : `/storage/${campaign.image}`) : "https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?q=80&w=2071&auto=format&fit=crop"}
-                    alt={campaign.name}
-                    className="w-full h-full object-cover opacity-80"
-                />
+                {campaign.image ? (
+                    <img
+                        src={campaign.image.startsWith('http') ? campaign.image : `/storage/${campaign.image}`}
+                        alt={campaign.name}
+                        className="w-full h-full object-cover opacity-80"
+                    />
+                ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-pitch-black border-b-8 border-pub-gold p-12">
+                         <Icon name="Zap" size={80} className="text-pub-gold animate-pulse mb-4" />
+                         <div className="font-heading text-pub-gold text-2xl uppercase tracking-widest opacity-30">CAMP_PROTOCOLL</div>
+                    </div>
+                )}
 
                 {/* Overlays */}
                 <div className="absolute inset-0 bg-grunge-texture opacity-30 pointer-events-none mix-blend-overlay"></div>
                 <div className="absolute inset-0 bg-gradient-to-t from-pitch-black via-transparent to-pitch-black/40 pointer-events-none"></div>
 
-                {/* Floating Close Button */}
-                <button onClick={onClose} className="absolute top-6 right-6 z-50 bg-white text-pitch-black p-2 border-2 border-pitch-black shadow-[4px_4px_0_0_#000] active:translate-x-1 active:translate-y-1 active:shadow-none hover:rotate-90 transition-transform duration-300">
+                {/* Floating Close Button - Adjusted for Notch/Safe Area */}
+                <button 
+                    onClick={onClose} 
+                    className="absolute top-10 right-6 z-50 bg-white text-pitch-black p-2 border-2 border-pitch-black shadow-[4px_4px_0_0_#000] active:translate-x-1 active:translate-y-1 active:shadow-none hover:rotate-90 transition-transform duration-300"
+                    style={{ marginTop: 'env(safe-area-inset-top, 0px)' }}
+                >
                     <Icon name="X" size={24} />
                 </button>
 
@@ -62,7 +100,7 @@ export default function DefaultCampaignCard({ campaign, onClose, openDetails }) 
                                 initial={{ opacity: 0, scale: 0.98 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 onClick={() => openDetails?.(item)}
-                                className="group relative flex flex-col bg-white border-2 border-pitch-black shadow-[4px_4px_0_0_#000] hover:shadow-[6px_6px_0_0_#ffb000] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all cursor-pointer"
+                                className="group relative flex flex-col bg-white border-2 border-pitch-black shadow-[4px_4px_0_0_#000] hover:shadow-[6px_6px_0_0_var(--color-pub-gold)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all cursor-pointer"
                             >
                                 <div className="aspect-[4/3] bg-pitch-black overflow-hidden relative border-b-2 border-pitch-black">
                                     {item.image ? (
@@ -77,12 +115,26 @@ export default function DefaultCampaignCard({ campaign, onClose, openDetails }) 
                                     <div className="absolute bottom-0 right-0 flex flex-col items-end z-20">
                                         {/* For Bundles, we just show the item price naturally as in menu 
                                             For other campaigns (fixed/percentage), we show the discount structure */}
-                                        {!isBundle && item.campaign_price ? (
-                                            <div className="flex flex-col items-end">
-                                                <span className="bg-red-600 text-white text-[10px] font-bold px-1 line-through decoration-white/80 shadow-[2px_2px_0_0_#000] border border-pitch-black mb-0.5 relative z-10 rotate-2">
+                                        {isCollective && item.collective_tiers ? (
+                                            (() => {
+                                                const minPrice = Math.min(...item.collective_tiers.map(t => parseFloat(t.price)));
+                                                return (
+                                                    <div className="flex flex-col items-end p-1">
+                                                        <div className="font-mono text-sm font-bold px-3 py-1 min-w-[60px] text-center shadow-[2px_2px_0_0_#000] border-l-2 border-t-2 border-pitch-black relative bg-pub-gold text-pitch-black mb-1">
+                                                            ₺{parseFloat(item.price)}
+                                                        </div>
+                                                        <div className="font-mono text-[9px] font-black px-1.5 py-0.5 text-center shadow-[2px_2px_0_0_#000] border border-pitch-black relative bg-red-600 text-white flex-shrink-0 whitespace-nowrap z-20 rotate-0">
+                                                            KOLEKTİF: ₺{minPrice}/AD
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()
+                                        ) : !isBundle && item.campaign_price ? (
+                                            <div className="flex flex-col items-end p-1">
+                                                <span className="bg-pub-gold text-pitch-black text-[10px] font-bold px-1.5 py-0.5 line-through decoration-pitch-black/80 shadow-[2px_2px_0_0_#000] border border-pitch-black relative z-10 rotate-2 mb-0.5">
                                                     ₺{parseFloat(item.price)}
                                                 </span>
-                                                <div className={`font-mono text-sm font-bold px-3 py-1 min-w-[60px] text-center shadow-[2px_2px_0_0_#000] border-l-2 border-t-2 border-pitch-black relative bg-pub-gold text-pitch-black`}>
+                                                <div className={`font-mono text-sm font-bold px-3 py-1 min-w-[60px] text-center shadow-[2px_2px_0_0_#000] border-2 border-pitch-black relative bg-red-600 text-white -rotate-1`}>
                                                     ₺{parseFloat(item.campaign_price)}
                                                 </div>
                                             </div>

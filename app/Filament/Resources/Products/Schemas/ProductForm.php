@@ -235,6 +235,31 @@ class ProductForm
                             ]),
                     ]),
 
+
+                Section::make('Diyet & Alerjen Bilgileri')
+                    ->description('Ürünün diyet türlerini ve alerjen uyarılarını belirtin. Müşteriler bu bilgileri menüde görebilir.')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                Select::make('dietTypes')
+                                    ->label('Diyet Türleri')
+                                    ->multiple()
+                                    ->relationship('dietTypes', 'name')
+                                    ->preload()
+                                    ->searchable()
+                                    ->placeholder('Vegan, Vejetaryen, Glutensiz...')
+                                    ->helperText('Birden fazla seçebilirsiniz.'),
+                                Select::make('allergens')
+                                    ->label('Alerjenler')
+                                    ->multiple()
+                                    ->relationship('allergens', 'name')
+                                    ->preload()
+                                    ->searchable()
+                                    ->placeholder('Fıstık, Süt, Gluten...')
+                                    ->helperText('İçerdiği alerjenleri seçin.'),
+                            ]),
+                    ]),
+
                 Section::make('Yayın Ayarları')
                     ->schema([
                         Repeater::make('badges')

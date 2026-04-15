@@ -63,7 +63,7 @@ export default function DefaultCampaignCard({ campaign, onClose, openDetails }) 
                                 initial={{ opacity: 0, scale: 0.98 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 onClick={() => openDetails?.(item)}
-                                className="group relative flex flex-col bg-white border-2 border-pitch-black shadow-[4px_4px_0_0_#000] hover:shadow-[6px_6px_0_0_#ffb000] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all cursor-pointer"
+                                className="group relative flex flex-col bg-white border-2 border-pitch-black shadow-[4px_4px_0_0_#000] hover:shadow-[6px_6px_0_0_var(--color-pub-gold)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all cursor-pointer"
                             >
                                 <div className="aspect-[4/3] bg-pitch-black overflow-hidden relative border-b-2 border-pitch-black">
                                     {item.image ? (

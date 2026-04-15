@@ -25,18 +25,20 @@ class CampaignService
         // We need to traverse deep.
         
         foreach ($menuData as $mainCategoryType => &$groups) {
+            // Option A: Skip the 'campaign' gallery tab from global price overrides
+            // This ensures products in specific campaign views show their own prices
+            if ($mainCategoryType === 'campaign') continue;
+
             foreach ($groups as &$group) {
-                $subcategories = $group['subcategories'] ?? [];
-                foreach ($subcategories as &$sub) {
-                    $items = &$sub['items'];
-                    if (is_array($items)) {
-                        foreach ($items as &$product) {
-                            $this->applyRulesToProduct($product, $activeCampaigns);
-                        }
+                if (!isset($group['subcategories'])) continue;
+                
+                foreach ($group['subcategories'] as &$sub) {
+                    if (!isset($sub['items']) || !is_array($sub['items'])) continue;
+                    
+                    foreach ($sub['items'] as &$product) {
+                        $this->applyRulesToProduct($product, $activeCampaigns);
                     }
                 }
-                // Update the modified subcategories back to group
-                $group['subcategories'] = $subcategories;
             }
         }
 
@@ -46,6 +48,69 @@ class CampaignService
     public function getActiveCampaignsForStore(int $storeId)
     {
         return $this->getActiveCampaigns($storeId);
+    }
+
+    /**
+     * Get all campaigns that could potentially run in this store (ignoring current time schedule).
+     */
+    public function getAvailableCampaignsForStore(int $storeId)
+    {
+        $now = now();
+
+        return \App\Models\Campaign::query()
+            ->where('is_active', true)
+            ->where(function ($q) use ($now) {
+                $q->whereNull('start_date')->orWhere('start_date', '<=', $now);
+            })
+            ->where(function ($q) use ($now) {
+                $q->whereNull('end_date')->orWhere('end_date', '>=', $now);
+            })
+            ->whereHas('stores', function ($q) use ($storeId) {
+                $q->where('stores.id', $storeId)
+                  ->where('campaign_store.is_active', true);
+            })
+            ->with(['items.product.dietTypes', 'items.product.allergens', 'schedules'])
+            ->orderBy('priority', 'desc')
+            ->get();
+    }
+
+    /**
+     * Check if a specific campaign is active right now.
+     */
+    public function isCampaignActiveNow(\App\Models\Campaign $campaign): bool
+    {
+        if (!$campaign->is_active) return false;
+
+        $now = now();
+        
+        // Date Check
+        if ($campaign->start_date && $now->lt($campaign->start_date)) return false;
+        if ($campaign->end_date && $now->gt($campaign->end_date)) return false;
+
+        // Schedule Check
+        if ($campaign->schedules->isEmpty()) return true;
+
+        $dayOfWeek = strtolower($now->format('l'));
+        $yesterday = strtolower($now->copy()->subDay()->format('l'));
+        $time = $now->format('H:i:s');
+
+        foreach ($campaign->schedules as $schedule) {
+            // Today match
+            if (in_array($dayOfWeek, $schedule->days)) {
+                if ($schedule->start_time <= $schedule->end_time) {
+                    if ($time >= $schedule->start_time && $time <= $schedule->end_time) return true;
+                } else {
+                    // Overnight
+                    if ($time >= $schedule->start_time) return true;
+                }
+            }
+            // Yesterday spill match
+            if (in_array($yesterday, $schedule->days) && $schedule->start_time > $schedule->end_time) {
+                if ($time <= $schedule->end_time) return true;
+            }
+        }
+
+        return false;
     }
 
     protected function getActiveCampaigns(int $storeId)
@@ -97,7 +162,7 @@ class CampaignService
                       });
                   });
             })
-            ->with(['items.product'])
+            ->with(['items.product.dietTypes', 'items.product.allergens'])
             ->orderBy('priority', 'desc')
             ->get();
     }
@@ -110,7 +175,7 @@ class CampaignService
             // Check if campaign targets this product
             // logic: campaign->items contains product_id?
             
-            $targetItem = $campaign->items->firstWhere('product_id', $product['id']);
+            $targetItem = $campaign->items->firstWhere('product_id', (int)$product['id']);
             
             if (!$targetItem) {
                 continue;
@@ -118,9 +183,9 @@ class CampaignService
 
             // FOUND A MATCH!
             $product['campaign_name'] = $campaign->display_title;
-            $product['campaign_type'] = $campaign->type;
+            $product['campaign_type'] = $campaign->type->value;
 
-            // Case A: Specific Portion Target (e.g. ID matches)
+            // Case A: Specific Portion Target (e.g. ID matches in options)
             if ($targetItem->store_product_portion_id && !empty($product['options'])) {
                 foreach ($product['options'] as &$option) {
                     if ($option['id'] === $targetItem->store_product_portion_id) {
@@ -128,33 +193,46 @@ class CampaignService
                     }
                 }
             }
-            // Case B: Whole Product Target (No specific portion ID specified)
+            // Case B: Product has only ONE portion and campaign targets that portion specifically
+            elseif ($targetItem->store_product_portion_id && ($product['store_product_portion_id'] ?? null) === $targetItem->store_product_portion_id) {
+                 $this->applyDiscountToProduct($product, $campaign, $targetItem);
+            }
+            // Case C: Whole Product Target (No specific portion ID specified in campaign)
             elseif (!$targetItem->store_product_portion_id) {
                  $this->applyDiscountToProduct($product, $campaign, $targetItem);
             }
+
+            // High priority campaign applied, stop here to prevent lower priority campaigns from overwriting
+            break;
         }
     }
+
 
     protected function applyDiscountToOption(&$option, $campaign, $item)
     {
         $originalPrice = $option['price'];
         $newPrice = $originalPrice;
 
-        if ($campaign->type === \App\Enums\CampaignType::FIXED_PRICE) {
+        if ($campaign->type->value === \App\Enums\CampaignType::FIXED_PRICE->value) {
              $newPrice = $item->price_override ?? $campaign->value;
-        } elseif ($campaign->type === \App\Enums\CampaignType::PERCENTAGE) {
+        } elseif ($campaign->type->value === \App\Enums\CampaignType::PERCENTAGE->value) {
              $discount = ($originalPrice * $campaign->value) / 100;
              $newPrice = $originalPrice - $discount;
-        } elseif ($campaign->type === \App\Enums\CampaignType::BUNDLE) {
+        } elseif ($campaign->type->value === \App\Enums\CampaignType::BUNDLE->value) {
              $newPrice = $campaign->value;
+        } elseif ($campaign->type->value === \App\Enums\CampaignType::COLLECTIVE->value) {
+             $option['collective_tiers'] = $campaign->tiers;
+             if (!empty($campaign->tiers) && isset($campaign->tiers[0]['price'])) {
+                 $newPrice = $campaign->tiers[0]['price']; // Fallback starting price
+             }
         }
 
         // Set name and type for all matches
         $option['campaign_name'] = $campaign->display_title;
-        $option['campaign_type'] = $campaign->type;
+        $option['campaign_type'] = $campaign->type->value;
 
         // Apply price only if it's not 'x_get_y' and is cheaper/valid
-        if ($campaign->type !== \App\Enums\CampaignType::X_GET_Y && ($newPrice < $originalPrice || $campaign->type === \App\Enums\CampaignType::BUNDLE)) {
+        if ($campaign->type->value !== \App\Enums\CampaignType::X_GET_Y->value && ($newPrice < $originalPrice || in_array($campaign->type->value, [\App\Enums\CampaignType::BUNDLE->value, \App\Enums\CampaignType::COLLECTIVE->value]))) {
             $option['campaign_price'] = $newPrice;
         }
     }
@@ -166,19 +244,24 @@ class CampaignService
             $originalPrice = $product['price'];
             $newPrice = $originalPrice;
 
-             if ($campaign->type === \App\Enums\CampaignType::FIXED_PRICE) {
+             if ($campaign->type->value === \App\Enums\CampaignType::FIXED_PRICE->value) {
                  $newPrice = $item->price_override ?? $campaign->value;
-            } elseif ($campaign->type === \App\Enums\CampaignType::PERCENTAGE) {
+            } elseif ($campaign->type->value === \App\Enums\CampaignType::PERCENTAGE->value) {
                  $discount = ($originalPrice * $campaign->value) / 100;
                  $newPrice = $originalPrice - $discount;
-            } elseif ($campaign->type === \App\Enums\CampaignType::BUNDLE) {
+            } elseif ($campaign->type->value === \App\Enums\CampaignType::BUNDLE->value) {
                  $newPrice = $campaign->value;
+            } elseif ($campaign->type->value === \App\Enums\CampaignType::COLLECTIVE->value) {
+                 $product['collective_tiers'] = $campaign->tiers;
+                 if (!empty($campaign->tiers) && isset($campaign->tiers[0]['price'])) {
+                     $newPrice = $campaign->tiers[0]['price'];
+                 }
             }
 
             $product['campaign_name'] = $campaign->display_title;
-            $product['campaign_type'] = $campaign->type;
+            $product['campaign_type'] = $campaign->type->value;
 
-            if ($campaign->type !== \App\Enums\CampaignType::X_GET_Y && ($newPrice < $originalPrice || $campaign->type === \App\Enums\CampaignType::BUNDLE)) {
+            if ($campaign->type->value !== \App\Enums\CampaignType::X_GET_Y->value && ($newPrice < $originalPrice || in_array($campaign->type->value, [\App\Enums\CampaignType::BUNDLE->value, \App\Enums\CampaignType::COLLECTIVE->value]))) {
                 $product['campaign_price'] = $newPrice;
             }
         } else {

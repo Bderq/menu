@@ -105,5 +105,12 @@ export const useTracking = (activeCategory, activeProduct) => {
         }
     }, [activeCategory]);
 
-    return { trackClick };
+    // Toggle Product Vote (Like)
+    const toggleVote = useCallback((productId) => {
+        return axios.post('/tracking/vote', {
+            product_id: productId
+        });
+    }, []);
+
+    return { trackClick, toggleVote };
 };

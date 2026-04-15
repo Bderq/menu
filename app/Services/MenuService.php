@@ -24,9 +24,13 @@ class MenuService
                 ->with(['children.products' => function($query) use ($store) {
                     $query->whereHas('stores', function($q) use ($store) {
                         $q->where('store_id', $store->id)->where('is_active', true);
-                    })->with(['portions' => function($q) use ($store) {
-                        $q->where('store_id', $store->id)->where('is_active', true)->orderBy('sort_order');
-                    }])->orderBy('sort_order');
+                    })->with([
+                        'portions' => function($q) use ($store) {
+                            $q->where('store_id', $store->id)->where('is_active', true)->orderBy('sort_order');
+                        },
+                        'dietTypes',
+                        'allergens'
+                    ])->orderBy('sort_order');
                 }])
                 ->get();
             
@@ -34,9 +38,9 @@ class MenuService
             
             if ($mainCat->type === \App\Enums\CategoryType::CAMPAIGN) {
                 // CAMPAIGN GALLERY LOGIC
-                $activeCampaigns = $this->campaignService->getActiveCampaignsForStore($store->id);
+                $availableCampaigns = $this->campaignService->getAvailableCampaignsForStore($store->id);
                 
-                foreach ($activeCampaigns as $campaign) {
+                foreach ($availableCampaigns as $campaign) {
                     $campaignItems = [];
                     foreach ($campaign->items as $targetItem) {
                         $p = $targetItem->product;
@@ -55,8 +59,9 @@ class MenuService
                         'name' => $campaign->display_title,
                         'description' => $campaign->description,
                         'image' => $campaign->image_path ? (str_starts_with($campaign->image_path, 'http') ? $campaign->image_path : '/storage/' . $campaign->image_path) : null,
-                        'type' => $campaign->type,
+                        'type' => $campaign->type->value,
                         'value' => $campaign->value,
+                        'is_live' => $this->campaignService->isCampaignActiveNow($campaign),
                         'subcategories' => [
                             [
                                 'id' => 'cp-items-' . $campaign->id,
@@ -118,7 +123,7 @@ class MenuService
                          $q->where('store_id', $store->id)->withPivot(['custom_name', 'custom_description', 'custom_image_path', 'is_active', 'is_featured', 'sort_order']);
                     }, 'portions' => function($q) use ($store) {
                          $q->where('store_id', $store->id)->where('is_active', true)->orderBy('sort_order');
-                    }])
+                    }, 'dietTypes', 'allergens'])
                     ->get()
                     ->sortBy(function($product) use ($store) {
                         return $product->stores->find($store->id)->pivot->sort_order;
@@ -149,7 +154,46 @@ class MenuService
             $menuData[$key] = $formattedGroups;
         }
 
-        // APPLY ACTIVE CAMPAIGNS
+        // Ensure campaign key is populated even if no campaign category exists
+        if (!isset($menuData['campaign'])) {
+            $availableCampaigns = $this->campaignService->getAvailableCampaignsForStore($store->id);
+            $formattedCampaignGroups = [];
+            
+            foreach ($availableCampaigns as $campaign) {
+                $campaignItems = [];
+                foreach ($campaign->items as $targetItem) {
+                    $p = $targetItem->product;
+                    if (!$p) continue;
+
+                    $sp = $p->stores()->where('store_id', $store->id)->first();
+                    if (!$sp) continue;
+
+                    $formatted = $this->formatProduct($p, $sp->pivot, $store->id);
+                    $this->applySpecificCampaignToProduct($formatted, $campaign, $targetItem);
+                    $campaignItems[] = $formatted;
+                }
+
+                $formattedCampaignGroups[] = [
+                    'id' => 'camp-' . $campaign->id,
+                    'name' => $campaign->display_title,
+                    'description' => $campaign->description,
+                    'image' => $campaign->image_path ? (str_starts_with($campaign->image_path, 'http') ? $campaign->image_path : '/storage/' . $campaign->image_path) : null,
+                    'type' => $campaign->type->value,
+                    'value' => $campaign->value,
+                    'is_live' => $this->campaignService->isCampaignActiveNow($campaign),
+                    'subcategories' => [
+                        [
+                            'id' => 'cp-items-' . $campaign->id,
+                            'name' => 'Dahil Olan Ürünler',
+                            'items' => $campaignItems
+                        ]
+                    ]
+                ];
+            }
+            $menuData['campaign'] = $formattedCampaignGroups;
+        }
+
+        // APPLY ACTIVE CAMPAIGNS (for labels/prices on regular products)
         return $this->campaignService->applyCampaigns($menuData, $store->id);
     }
 
@@ -196,6 +240,7 @@ class MenuService
 
         return [
             'id' => $product->id,
+            'store_product_portion_id' => $portions->count() === 1 ? $portions->first()->id : null,
             'name' => $name,
             'description' => $description,
             'price' => $price,
@@ -203,7 +248,9 @@ class MenuService
             'detail_image' => $detailImage,
             'options' => $options,
             'tags' => $tags,
-            'badge' => $badge
+            'badge' => $badge,
+            'diet_types' => $product->dietTypes->map(fn($dt) => ['name' => $dt->name, 'color' => $dt->color, 'icon' => $dt->icon]),
+            'allergens' => $product->allergens->map(fn($al) => ['name' => $al->name, 'color' => $al->color, 'icon' => $al->icon])
         ];
     }
 
@@ -212,22 +259,25 @@ class MenuService
         $originalPrice = $product['price'];
         $newPrice = $originalPrice;
 
-        if ($campaign->type === \App\Enums\CampaignType::FIXED_PRICE) {
+        if ($campaign->type->value === \App\Enums\CampaignType::FIXED_PRICE->value) {
             $newPrice = $targetItem->price_override ?? $campaign->value;
-        } elseif ($campaign->type === \App\Enums\CampaignType::PERCENTAGE) {
+        } elseif ($campaign->type->value === \App\Enums\CampaignType::PERCENTAGE->value) {
             $discount = ($originalPrice * $campaign->value) / 100;
             $newPrice = $originalPrice - $discount;
-        } elseif ($campaign->type === \App\Enums\CampaignType::BUNDLE) {
+        } elseif ($campaign->type->value === \App\Enums\CampaignType::BUNDLE->value) {
             $newPrice = $campaign->value;
+        } elseif ($campaign->type->value === \App\Enums\CampaignType::COLLECTIVE->value) {
+            $product['collective_tiers'] = $campaign->tiers;
+            if (!empty($campaign->tiers) && isset($campaign->tiers[0]['price'])) {
+                $newPrice = $campaign->tiers[0]['price']; // Start with the first tier as preview
+            }
         }
 
         $product['campaign_name'] = $campaign->display_title;
-        $product['campaign_type'] = $campaign->type;
+        $product['campaign_type'] = $campaign->type->value;
 
-        if ($campaign->type !== \App\Enums\CampaignType::X_GET_Y && $campaign->type === \App\Enums\CampaignType::BUNDLE) {
-             $product['campaign_price'] = $newPrice;
-        } elseif ($campaign->type !== \App\Enums\CampaignType::X_GET_Y && $newPrice < $originalPrice) {
-             $product['campaign_price'] = $newPrice;
+        if ($campaign->type->value !== \App\Enums\CampaignType::X_GET_Y->value && ($newPrice < $originalPrice || in_array($campaign->type->value, [\App\Enums\CampaignType::BUNDLE->value, \App\Enums\CampaignType::COLLECTIVE->value]))) {
+            $product['campaign_price'] = $newPrice;
         }
 
         if (!empty($product['options'])) {
@@ -239,16 +289,21 @@ class MenuService
                     continue;
                 }
 
-                if ($campaign->type === \App\Enums\CampaignType::FIXED_PRICE) {
+                if ($campaign->type->value === \App\Enums\CampaignType::FIXED_PRICE->value) {
                     $optNew = $targetItem->price_override ?? $campaign->value;
-                } elseif ($campaign->type === \App\Enums\CampaignType::PERCENTAGE) {
+                } elseif ($campaign->type->value === \App\Enums\CampaignType::PERCENTAGE->value) {
                     $optNew = $optPrice - (($optPrice * $campaign->value) / 100);
-                } elseif ($campaign->type === \App\Enums\CampaignType::BUNDLE) {
+                } elseif ($campaign->type->value === \App\Enums\CampaignType::BUNDLE->value) {
                     $optNew = $campaign->value;
+                } elseif ($campaign->type->value === \App\Enums\CampaignType::COLLECTIVE->value) {
+                    $option['collective_tiers'] = $campaign->tiers;
+                    if (!empty($campaign->tiers) && isset($campaign->tiers[0]['price'])) {
+                        $optNew = $campaign->tiers[0]['price'];
+                    }
                 }
 
                 $option['campaign_name'] = $campaign->display_title;
-                if ($campaign->type !== \App\Enums\CampaignType::X_GET_Y && ($optNew < $optPrice || $campaign->type === \App\Enums\CampaignType::BUNDLE)) {
+                if ($campaign->type->value !== \App\Enums\CampaignType::X_GET_Y->value && ($optNew < $optPrice || in_array($campaign->type->value, [\App\Enums\CampaignType::BUNDLE->value, \App\Enums\CampaignType::COLLECTIVE->value]))) {
                     $option['campaign_price'] = $optNew;
                     $product['campaign_price'] = $optNew; 
                 }

@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function NowPlaying() {
+export default function NowPlaying({ storeSlug }) {
     const [track, setTrack] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isExpanded, setIsExpanded] = useState(false);
     const [prevTrackId, setPrevTrackId] = useState(null);
 
     const fetchTrack = async () => {
+        if (!storeSlug) return;
         try {
-            const response = await fetch('/api/now-playing');
+            const response = await fetch(`/api/${storeSlug}/now-playing`);
             const data = await response.json();
 
             if (data) {
@@ -133,7 +134,7 @@ export default function NowPlaying() {
                                 transformStyle: 'preserve-3d',
                                 backfaceVisibility: 'hidden'
                             }}
-                            className="absolute left-10 bg-white border-2 border-pitch-black shadow-[4px_4px_0px_0px_#ffb000] overflow-hidden z-20 transform-gpu"
+                            className="absolute left-10 bg-white border-2 border-pitch-black shadow-[4px_4px_0px_0px_var(--color-pub-gold)] overflow-hidden z-20 transform-gpu"
                         >
                             <div className="pl-12 pr-14 h-full flex flex-col justify-center min-w-[240px]">
                                 <div className="flex items-center gap-2 mb-1">

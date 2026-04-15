@@ -16,9 +16,27 @@ class StoreForm
                 TextInput::make('slug')
                     ->required(),
                 TextInput::make('logo_path'),
-                TextInput::make('theme_color')
+                \Filament\Forms\Components\ColorPicker::make('theme_color')
                     ->required()
                     ->default('#ffb000'),
+                \Filament\Schemas\Components\Section::make('Spotify Integration')
+                    ->description('Enter Spotify API credentials for this specific branch.')
+                    ->schema([
+                        TextInput::make('spotify_client_id')
+                            ->label('Client ID')
+                            ->maxLength(255),
+                        TextInput::make('spotify_client_secret')
+                            ->label('Client Secret')
+                            ->password()
+                            ->revealable()
+                            ->maxLength(255),
+                        TextInput::make('spotify_refresh_token')
+                            ->label('Refresh Token')
+                            ->password()
+                            ->revealable()
+                            ->maxLength(1000),
+                    ])
+                    ->collapsed(),
             ]);
     }
 }

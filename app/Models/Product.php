@@ -18,6 +18,16 @@ class Product extends Model
         'tags' => 'array',
     ];
 
+    public function allergens(): BelongsToMany
+    {
+        return $this->belongsToMany(Allergen::class);
+    }
+
+    public function dietTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(DietType::class, 'diet_type_product');
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
@@ -38,5 +48,10 @@ class Product extends Model
     public function portions(): HasMany
     {
         return $this->hasMany(StoreProductPortion::class);
+    }
+
+    public function votes(): HasMany
+    {
+        return $this->hasMany(Vote::class);
     }
 }

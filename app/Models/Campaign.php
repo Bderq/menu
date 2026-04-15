@@ -21,6 +21,7 @@ class Campaign extends Model
         'is_active',
         'start_date',
         'end_date',
+        'tiers',
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class Campaign extends Model
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'is_active' => 'boolean',
+        'tiers' => 'array',
     ];
 
     public function items(): \Illuminate\Database\Eloquent\Relations\HasMany

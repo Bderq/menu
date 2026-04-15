@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Filter, MessageSquare, Send, X, Check, Zap, AlertTriangle, Wheat, Egg, Milk, Bean, Nut, Droplets, Fish, HelpCircle, Leaf, Flame, FlaskConical, Flower, Music, ClipboardList } from 'lucide-react';
 
-export default function MenuInteractionDrawer({ onFilterChange, venueName = "MEKAN", isOpen, onOpen, onClose }) {
+export default function MenuInteractionDrawer({ storeSlug, onFilterChange, venueName = "MEKAN", isOpen, onOpen, onClose }) {
     const [activeTab, setActiveTab] = useState('filters'); // 'filters' | 'feedback'
     const [isAllergensOpen, setIsAllergensOpen] = useState(false);
     const [filters, setFilters] = useState({
@@ -32,8 +32,9 @@ export default function MenuInteractionDrawer({ onFilterChange, venueName = "MEK
     const [currentTimeMs, setCurrentTimeMs] = useState(0);
 
     const fetchTrack = async () => {
+        if (!storeSlug) return;
         try {
-            const response = await fetch('/api/now-playing');
+            const response = await fetch(`/api/${storeSlug}/now-playing`);
             const data = await response.json();
             
             setTrack((prevTrack) => {
@@ -283,7 +284,7 @@ export default function MenuInteractionDrawer({ onFilterChange, venueName = "MEK
                                                             onClick={() => handleFilterToggle(item.key)}
                                                             className={`cursor-pointer group relative border-4 border-pitch-black p-5 transition-all duration-200
                                                             ${filters[item.key]
-                                                                    ? 'bg-pitch-black text-pub-gold shadow-[8px_8px_0_0_#ffb000] -translate-y-1'
+                                                                    ? 'bg-pitch-black text-pub-gold shadow-[8px_8px_0_0_var(--color-pub-gold)] -translate-y-1'
                                                                     : 'bg-white text-pitch-black shadow-[8px_8px_0_0_#000] hover:-translate-y-1 hover:shadow-[10px_10px_0_0_#000] hover:bg-gray-50'
                                                                 }`}
                                                             style={{ transform: `rotate(${i % 2 === 0 ? '1deg' : '-1deg'})` }}
@@ -386,7 +387,7 @@ export default function MenuInteractionDrawer({ onFilterChange, venueName = "MEK
                                                     </div>
                                                     
                                                     {/* Text Box */}
-                                                    <div className="bg-white border-4 border-pitch-black p-6 shadow-[8px_8px_0_0_#ffb000] -rotate-2 relative z-10 max-w-sm">
+                                                    <div className="bg-white border-4 border-pitch-black p-6 shadow-[8px_8px_0_0_var(--color-pub-gold)] -rotate-2 relative z-10 max-w-sm">
                                                         <h3 className="font-heading text-3xl sm:text-4xl uppercase mb-3 leading-none text-pitch-black block">YAPIM AŞAMASINDA</h3>
                                                         <div className="h-1 w-12 bg-pitch-black mx-auto mb-3 absolute top-0 left-0"></div>
                                                         <div className="h-1 w-12 bg-pitch-black mx-auto mb-3 absolute bottom-0 right-0"></div>

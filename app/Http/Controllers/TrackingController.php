@@ -71,5 +71,31 @@ class TrackingController extends Controller
 
         return response()->json(['status' => 'saved']);
     }
+
+    public function toggleVote(Request $request)
+    {
+        $visitorId = $request->input('tracking_visitor_id');
+        $productId = $request->input('product_id');
+
+        if (!$visitorId || !$productId) {
+            return response()->json(['error' => 'Missing data'], 400);
+        }
+
+        $vote = \App\Models\Vote::where('visitor_id', $visitorId)
+            ->where('product_id', $productId)
+            ->first();
+
+        if ($vote) {
+            $vote->delete();
+            return response()->json(['status' => 'removed']);
+        }
+
+        \App\Models\Vote::create([
+            'visitor_id' => $visitorId,
+            'product_id' => $productId,
+        ]);
+
+        return response()->json(['status' => 'added']);
+    }
 }
 

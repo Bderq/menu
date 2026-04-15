@@ -9,6 +9,14 @@ class Store extends Model
 {
     protected $guarded = [];
 
+    protected function casts(): array
+    {
+        return [
+            'spotify_client_secret' => 'encrypted',
+            'spotify_refresh_token' => 'encrypted',
+        ];
+    }
+
     // The products available in this store (via pivot)
     public function products(): BelongsToMany
     {

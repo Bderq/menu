@@ -13,16 +13,23 @@ class MenuController extends Controller
 
         $menuData = $menuService->getFormattedMenuData($store);
 
+        $visitorId = request()->input('tracking_visitor_id');
+        $likedProductIds = $visitorId 
+            ? \App\Models\Vote::where('visitor_id', $visitorId)->pluck('product_id')->toArray() 
+            : [];
+
         return Inertia::render('Menu/Index', [
             'menuData' => $menuData,
-            'store' => $store
+            'store' => $store,
+            'likedProductIds' => $likedProductIds
         ]);
     }
 
-    public function nowPlaying(\App\Services\SpotifyService $spotifyService)
+    public function nowPlaying($store_slug, \App\Services\SpotifyService $spotifyService)
     {
         try {
-            $track = $spotifyService->getNowPlaying();
+            $store = \App\Models\Store::where('slug', $store_slug)->firstOrFail();
+            $track = $spotifyService->getNowPlaying($store);
 
             if ($track) {
                 return [

@@ -8,50 +8,48 @@ use Illuminate\Support\Facades\Log;
 
 class SpotifyService
 {
-    private string $clientId;
-    private string $clientSecret;
-    private string $refreshToken;
-
     public function __construct()
     {
-        $this->clientId = config('services.spotify.client_id');
-        $this->clientSecret = config('services.spotify.client_secret');
-        $this->refreshToken = config('services.spotify.refresh_token');
+        // Credentials are now retrieved dynamically from the Store model
     }
 
     /**
-     * Get a valid access token.
+     * Get a valid access token for a specific store.
      */
-    private function getAccessToken(): ?string
+    private function getAccessToken(\App\Models\Store $store): ?string
     {
-        return Cache::remember('spotify_access_token', 3500, function () {
-            if (!$this->clientId || !$this->clientSecret || !$this->refreshToken) {
-                Log::warning('Spotify credentials are not fully configured.');
+        return Cache::remember("spotify_access_token_{$store->id}", 3500, function () use ($store) {
+            $clientId = $store->spotify_client_id;
+            $clientSecret = $store->spotify_client_secret;
+            $refreshToken = $store->spotify_refresh_token;
+
+            if (!$clientId || !$clientSecret || !$refreshToken) {
+                Log::warning("Spotify credentials are not fully configured for store: {$store->name}");
                 return null;
             }
 
-            $response = Http::asForm()->withBasicAuth($this->clientId, $this->clientSecret)
+            $response = Http::asForm()->withBasicAuth($clientId, $clientSecret)
                 ->post('https://accounts.spotify.com/api/token', [
                     'grant_type' => 'refresh_token',
-                    'refresh_token' => $this->refreshToken,
+                    'refresh_token' => $refreshToken,
                 ]);
 
             if ($response->successful()) {
                 return $response->json('access_token');
             }
 
-            Log::error('Spotify token refresh failed', ['error' => $response->body()]);
+            Log::error("Spotify token refresh failed for store: {$store->name}", ['error' => $response->body()]);
             return null;
         });
     }
 
     /**
-     * Get the now playing or recently played track.
+     * Get the now playing or recently played track for a specific store.
      */
-    public function getNowPlaying(): ?array
+    public function getNowPlaying(\App\Models\Store $store): ?array
     {
-        return Cache::remember('spotify_now_playing', 10, function () {
-            $token = $this->getAccessToken();
+        return Cache::remember("spotify_now_playing_{$store->id}", 10, function () use ($store) {
+            $token = $this->getAccessToken($store);
             
             if (!$token) {
                 return null;

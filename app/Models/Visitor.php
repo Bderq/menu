@@ -16,4 +16,9 @@ class Visitor extends Model
     {
         return $this->hasMany(Visit::class);
     }
+
+    public function votes()
+    {
+        return $this->hasMany(Vote::class);
+    }
 }

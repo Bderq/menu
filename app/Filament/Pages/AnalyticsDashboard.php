@@ -18,6 +18,7 @@ class AnalyticsDashboard extends Page
         return [
             \App\Filament\Widgets\AnalyticsStats::class,
             \App\Filament\Widgets\TopInteractionsTable::class,
+            \App\Filament\Widgets\TopLikesTable::class,
         ];
     }
 }

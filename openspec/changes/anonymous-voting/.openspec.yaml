@@ -1,0 +1,6 @@
+id: anonymous-voting
+title: Anonymous Product Voting System
+status: in-progress
+owner: @backend-specialist
+depends_on: [anonymous-tracking]
+description: A system allowing anonymous visitors to "like" products once per device using the established tracking infrastructure.

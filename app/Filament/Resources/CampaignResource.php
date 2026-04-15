@@ -96,6 +96,7 @@ class CampaignResource extends Resource
                                 \App\Enums\CampaignType::PERCENTAGE->value => 'Yüzde İndirim (%)',
                                 \App\Enums\CampaignType::BUNDLE->value => 'Paket Menü (Bundle)',
                                 \App\Enums\CampaignType::X_GET_Y->value => 'Promosyon (1 Alana 1 Bedava vb.)',
+                                \App\Enums\CampaignType::COLLECTIVE->value => 'Kolektif (Çoklu Alım)',
                             ])
                             ->required()
                             ->live(), // Reactive to show/hide fields
@@ -127,6 +128,68 @@ class CampaignResource extends Resource
                                     ->visible(fn (Get $get) => $get('type') === \App\Enums\CampaignType::X_GET_Y->value)
                                     ->required(fn (Get $get) => $get('type') === \App\Enums\CampaignType::X_GET_Y->value),
                             ]),
+
+                        Repeater::make('tiers')
+                            ->label('Fiyat Kademeleri (Örn: 4 Adet -> Birim Fiyat: 145 TL)')
+                            ->schema([
+                                Grid::make(3)->schema([
+                                    TextInput::make('quantity')
+                                        ->label('Alım Adedi (Paket)')
+                                        ->numeric()
+                                        ->live(onBlur: true)
+                                        ->required(),
+                                    TextInput::make('price')
+                                        ->label('Birim Fiyat (TL/Adet)')
+                                        ->numeric()
+                                        ->live(onBlur: true)
+                                        ->required(),
+                                    \Filament\Forms\Components\Placeholder::make('total')
+                                        ->label('Hesaplama Özeti')
+                                        ->content(function (Get $get) {
+                                            $qty = (float) ($get('quantity') ?: 0);
+                                            $price = (float) ($get('price') ?: 0);
+                                            
+                                            $originalPrice = 0;
+                                            $items = $get('../../items');
+                                            if (is_array($items) && count($items) > 0) {
+                                                $firstItem = reset($items);
+                                                if (!empty($firstItem['product_id'])) {
+                                                    $product = \App\Models\Product::find($firstItem['product_id']);
+                                                    // If portion is selected, maybe check portion price.. 
+                                                    // But for simplicity, we check base product price.
+                                                    if ($product) {
+                                                        $originalPrice = (float) $product->price;
+                                                    }
+                                                }
+                                            }
+                                            
+                                            $total = $qty * $price;
+                                            
+                                            if ($originalPrice > 0 && $qty > 0) {
+                                                $listTotal = $qty * $originalPrice;
+                                                $totalDiscount = $listTotal - $total;
+                                                $unitDiscount = $originalPrice - $price;
+                                                
+                                                return new \Illuminate\Support\HtmlString(
+                                                    "<div class='flex flex-col gap-1 text-sm'>" .
+                                                    "<div class='flex justify-between text-gray-500'><span>Referans Liste:</span> <span><del>₺" . number_format($listTotal, 2, ',', '.') . "</del> <span class='text-[10px]'>(₺" . number_format($originalPrice, 2, ',', '.') . "/Adet)</span></span></div>" .
+                                                    "<div class='flex justify-between font-bold text-gray-900 dark:text-gray-100'><span>Paket Toplam Tutar:</span> <span>₺" . number_format($total, 2, ',', '.') . "</span></div>" .
+                                                    "<div class='flex justify-between text-success-600 font-medium'><span>Paket Toplam İndirim:</span> <span>₺" . number_format($totalDiscount, 2, ',', '.') . "</span></div>" .
+                                                    "<div class='flex justify-between text-success-600 font-medium text-xs'><span>Paket Birim İndirim:</span> <span>₺" . number_format($unitDiscount, 2, ',', '.') . "</span></div>" .
+                                                    "</div>"
+                                                );
+                                            }
+
+                                            return new \Illuminate\Support\HtmlString(
+                                                "<div class='font-bold text-lg text-gray-900 dark:text-gray-100'>₺" . number_format($total, 2, ',', '.') . "</div>" .
+                                                "<div class='text-[10px] text-gray-500 mt-1'>(Kapsam bölümünden ürün seçerseniz indirimler hesaplanır)</div>"
+                                            );
+                                        }),
+                                ]),
+                            ])
+                            ->visible(fn (Get $get) => $get('type') === \App\Enums\CampaignType::COLLECTIVE->value)
+                            ->defaultItems(1)
+                            ->addActionLabel('Kademe Ekle'),
                     ]),
 
                 // 3. Store & Scope
@@ -262,6 +325,7 @@ class CampaignResource extends Resource
                         \App\Enums\CampaignType::PERCENTAGE => '% İndirim',
                         \App\Enums\CampaignType::BUNDLE => 'Paket',
                         \App\Enums\CampaignType::X_GET_Y => 'Fırsat (X-Y)',
+                        \App\Enums\CampaignType::COLLECTIVE => 'Kolektif',
                         default => $state->value,
                     })
                     ->color(fn (\App\Enums\CampaignType $state): string => match ($state) {
@@ -269,6 +333,7 @@ class CampaignResource extends Resource
                         \App\Enums\CampaignType::PERCENTAGE => 'info',
                         \App\Enums\CampaignType::BUNDLE => 'success',
                         \App\Enums\CampaignType::X_GET_Y => 'danger',
+                        \App\Enums\CampaignType::COLLECTIVE => 'primary',
                         default => 'gray',
                     }),
                 

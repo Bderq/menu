@@ -8,4 +8,5 @@ enum CampaignType: string
     case PERCENTAGE = 'percentage';
     case FIXED_PRICE = 'fixed_price';
     case X_GET_Y = 'x_get_y';
+    case COLLECTIVE = 'collective';
 }
