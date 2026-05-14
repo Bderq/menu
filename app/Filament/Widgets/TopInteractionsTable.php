@@ -17,26 +17,39 @@ class TopInteractionsTable extends TableWidget
         return $table
             ->query(
                 Interaction::query()
+                    ->with(['interactable'])
                     ->fromSub(function($query) {
                         $query->from('interactions')
+                            ->join('visits', 'interactions.visit_id', '=', 'visits.id')
+                            ->join('stores', 'visits.store_id', '=', 'stores.id')
                             ->select([
-                                DB::raw('MIN(id) as id'),
-                                'interactable_type', 
-                                'interactable_id', 
-                                'type', 
+                                DB::raw('MIN(interactions.id) as id'),
+                                'interactions.interactable_type', 
+                                'interactions.interactable_id', 
+                                'stores.name as store_name',
+                                'interactions.type', 
                                 DB::raw('COUNT(*) as count'), 
-                                DB::raw('SUM(duration_seconds) as total_duration')
+                                DB::raw('SUM(interactions.duration_seconds) as total_duration')
                             ])
-                            ->whereNotNull('interactable_id')
-                            ->where('created_at', '>', now()->subDays(30))
-                            ->groupBy(['interactable_type', 'interactable_id', 'type']);
+                            ->whereNotNull('interactions.interactable_id')
+                            ->where('interactions.created_at', '>', now()->subDay())
+                            ->groupBy(['interactions.interactable_type', 'interactions.interactable_id', 'stores.name', 'interactions.type']);
                     }, 'interactions')
             )
             ->defaultSort('count', 'desc')
             ->columns([
                 TextColumn::make('interactable.name')
                     ->label('Öğe Adı')
-                    ->description(fn ($record) => $record->interactable_type === 'App\Models\Product' ? 'Ürün' : 'Kategori'),
+                    ->description(fn ($record) => match ($record->interactable_type) {
+                        'App\Models\Product' => 'Ürün',
+                        'App\Models\Category' => 'Kategori',
+                        'App\Models\Campaign' => 'Kampanya',
+                        default => 'Bilinmeyen',
+                    }),
+                TextColumn::make('store_name')
+                    ->label('Şube')
+                    ->badge()
+                    ->color('primary'),
                 TextColumn::make('type')
                     ->label('Etkileşim')
                     ->badge()
@@ -57,7 +70,23 @@ class TopInteractionsTable extends TableWidget
             ])
             ->paginated([5, 10, 25])
             ->filters([
-                //
+                \Filament\Tables\Filters\SelectFilter::make('type')
+                    ->label('Etkileşim Türü')
+                    ->options([
+                        'click' => 'Tıklama',
+                        'view' => 'Görüntüleme',
+                        'heartbeat' => 'Vakit Geçirme',
+                    ]),
+                \Filament\Tables\Filters\SelectFilter::make('interactable_type')
+                    ->label('Öğe Türü')
+                    ->options([
+                        'App\Models\Product' => 'Ürün',
+                        'App\Models\Category' => 'Kategori',
+                        'App\Models\Campaign' => 'Kampanya',
+                    ]),
+                \Filament\Tables\Filters\SelectFilter::make('store_name')
+                    ->label('Şube')
+                    ->options(fn() => \App\Models\Store::pluck('name', 'name')->toArray()),
             ])
             ->headerActions([
                 //

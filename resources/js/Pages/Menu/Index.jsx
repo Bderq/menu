@@ -40,7 +40,7 @@ export default function Index({ menuData = {}, store = null, likedProductIds = [
 
     // Analytics Tracking
     const { trackClick, toggleVote } = useTracking(
-        activeSubCategory?.includes('-') ? activeSubCategory.split('-').pop() : activeSubCategory
+        mainTab === 'campaign' ? null : (activeSubCategory?.includes('-') ? activeSubCategory.split('-').pop() : activeSubCategory)
     );
 
     // Dynamic Theme Color Implementation
@@ -384,7 +384,10 @@ export default function Index({ menuData = {}, store = null, likedProductIds = [
                                     {flatSections.filter(s => s.campaignData?.is_live).map((section) => (
                                         <section key={section.uniqueId} data-unique-id={section.uniqueId} data-group-id={section.groupId} ref={el => categoryRefs.current[section.uniqueId] = el} className="scroll-mt-72">
                                             <div key={`${section.uniqueId}-${section.campaignData.id}`}
-                                                onClick={() => setSelectedCampaign(section.campaignData)}
+                                                onClick={() => {
+                                                    setSelectedCampaign(section.campaignData);
+                                                    trackClick('Campaign', section.campaignData.id.toString().replace('camp-', ''));
+                                                }}
                                                 className="group relative bg-white border-2 border-pitch-black shadow-[4px_4px_0_0_#000] overflow-hidden cursor-pointer active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all p-3"
                                                 style={{ transform: `rotate(${parseInt(section.campaignData.id) % 2 === 0 ? 0.8 : -0.8}deg)` }}
                                             >
@@ -430,7 +433,10 @@ export default function Index({ menuData = {}, store = null, likedProductIds = [
                                     {flatSections.filter(s => s.campaignData && !s.campaignData.is_live).map((section) => (
                                         <section key={section.uniqueId} data-unique-id={section.uniqueId} data-group-id={section.groupId} ref={el => categoryRefs.current[section.uniqueId] = el} className="scroll-mt-72">
                                             <div
-                                                onClick={() => setSelectedCampaign(section.campaignData)}
+                                                onClick={() => {
+                                                    setSelectedCampaign(section.campaignData);
+                                                    trackClick('Campaign', section.campaignData.id.toString().replace('camp-', ''));
+                                                }}
                                                 className="group relative bg-white border border-pitch-black/20 shadow-[2px_2px_0_0_rgba(0,0,0,0.1)] overflow-hidden cursor-pointer active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all p-3 grayscale opacity-60"
                                                 style={{ transform: `rotate(${parseInt(section.campaignData.id) % 2 === 0 ? 0.4 : -0.4}deg)` }}
                                             >

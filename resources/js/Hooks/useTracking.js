@@ -48,7 +48,7 @@ export const useTracking = (activeCategory, activeProduct) => {
             type: 'heartbeat',
             model: 'Category',
             id: category, // This should be the database ID if possible, or we resolve on backend
-            duration: 30
+            duration: 10
         }).catch(() => {});
     }, []);
 
@@ -81,28 +81,47 @@ export const useTracking = (activeCategory, activeProduct) => {
 
         // 2. Setup Heartbeat
         heartbeatInterval.current = setInterval(() => {
-            if (lastCategory.current) {
+            if (lastCategory.current && document.visibilityState === 'visible') {
                 sendHeartbeat(lastCategory.current);
             }
-        }, 30000);
+        }, 10000);
+
+        const handleVisibilityChange = () => {
+            // Optional: and immediate heartbeat when returning to help consistency
+            if (document.visibilityState === 'visible' && lastCategory.current) {
+                sendHeartbeat(lastCategory.current);
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
             if (heartbeatInterval.current) clearInterval(heartbeatInterval.current);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, []);
 
-    // Track Category View Changes
+    // Track Category View Changes with Delay
     useEffect(() => {
-        if (activeCategory && activeCategory !== lastCategory.current) {
+        if (!activeCategory) {
+            lastCategory.current = null; // Clear memory to stop heartbeat
+            return;
+        }
+        
+        if (activeCategory === lastCategory.current) return;
+
+        // Use a timeout to avoid logging immediate/accidental views (e.g., on page load/scroll)
+        // Only log if the user stays on the category for at least 2.5 seconds
+        const timer = setTimeout(() => {
             lastCategory.current = activeCategory;
             
-            // Log immediate view
             axios.post('/tracking/hit', {
                 type: 'view',
                 model: 'Category',
                 id: activeCategory
             }).catch(() => {});
-        }
+        }, 2500);
+
+        return () => clearTimeout(timer);
     }, [activeCategory]);
 
     // Toggle Product Vote (Like)

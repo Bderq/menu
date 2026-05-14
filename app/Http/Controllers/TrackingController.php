@@ -19,6 +19,10 @@ class TrackingController extends Controller
             $interactableType = \App\Models\Product::class;
         } elseif ($model === 'Category') {
             $interactableType = \App\Models\Category::class;
+        } elseif ($model === 'Campaign') {
+            $interactableType = \App\Models\Campaign::class;
+        } else {
+            return response()->json(['error' => 'Invalid model type'], 400);
         }
 
         \App\Models\Interaction::create([

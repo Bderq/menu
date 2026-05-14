@@ -21,7 +21,13 @@ class TopLikesTable extends BaseWidget
             ->query(
                 Product::query()
                     ->select('products.*')
-                    ->withCount('votes')
+                    ->with('stores')
+                    ->withCount(['votes' => function ($query) {
+                        $query->where('votes.created_at', '>', now()->subDay());
+                    }])
+                    ->whereHas('votes', function ($query) {
+                        $query->where('votes.created_at', '>', now()->subDay());
+                    })
                     ->orderByDesc('votes_count')
                     ->limit(10)
             )
@@ -32,8 +38,12 @@ class TopLikesTable extends BaseWidget
                 Tables\Columns\TextColumn::make('name')
                     ->label('Ürün Adı')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('stores.name')
+                    ->label('Şube(ler)')
+                    ->listWithLineBreaks()
+                    ->limitList(2),
                 Tables\Columns\TextColumn::make('votes_count')
-                    ->label('Toplam Beğeni')
+                    ->label('24s Beğeni')
                     ->badge()
                     ->color('danger')
                     ->sortable(),

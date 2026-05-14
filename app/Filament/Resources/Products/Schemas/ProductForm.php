@@ -62,6 +62,7 @@ class ProductForm
                             ->schema([
                                 FileUpload::make('image_path')
                                     ->label('Thumbnail (Liste Fotoğrafı)')
+                                    ->disk('public')
                                     ->image()
                                     ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                     ->imageEditor()
@@ -78,6 +79,7 @@ class ProductForm
                                 
                                 FileUpload::make('gallery')
                                     ->label('Ürün Galerisi (Kart Detay)')
+                                    ->disk('public')
                                     ->image()
                                     ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                     ->multiple()

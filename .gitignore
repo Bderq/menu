@@ -28,3 +28,7 @@ Homestead.json
 .env.production
 .phpactor.json
 auth.json
+/backups/
+debug_*.php
+debug_output.txt
+test_*.php

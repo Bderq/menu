@@ -23,8 +23,27 @@ class TrackVisitor
             return $next($request);
         }
 
+        // Detect Bots/Crawlers
+        $userAgent = $request->userAgent();
+        $bots = [
+            'Googlebot', 'Bingbot', 'Slurp', 'DuckDuckBot', 'Baiduspider', 'YandexBot', 'facebot', 'facebookexternalhit',
+            'ia_archiver', 'WhatsApp', 'TelegramBot', 'Twitterbot', 'LinkedInBot', 'Pinterestbot', 'Slackbot', 'Discordbot',
+            'Google-Structured-Data-Testing-Tool', 'CriteoBot', 'Applebot', 'HeadlessChrome', 'UptimeRobot'
+        ];
+        
+        foreach ($bots as $bot) {
+            if (stripos($userAgent, $bot) !== false) {
+                return $next($request);
+            }
+        }
+
         $uuid = $request->cookie($cookieName);
         $visitor = null;
+        $storeId = null;
+
+        if ($request->route('store_slug')) {
+            $storeId = \App\Models\Store::where('slug', $request->route('store_slug'))->value('id');
+        }
 
         if ($uuid) {
             $visitor = \App\Models\Visitor::where('uuid', $uuid)->first();
@@ -43,14 +62,45 @@ class TrackVisitor
         }
 
         // Manage Visit (Session)
-        $visit = \App\Models\Visit::where('visitor_id', $visitor->id)
-            ->where('started_at', '>', now()->subMinutes(30))
-            ->latest('started_at')
-            ->first();
+        $visit = null;
+        $visitQuery = \App\Models\Visit::where('visitor_id', $visitor->id)
+            ->where('started_at', '>', now()->subMinutes(30));
+
+        // If explicitly provided via route or we can infer it from the visitor's last active visit
+        if ($storeId) {
+            $visitQuery->where('store_id', $storeId);
+        } else {
+            // If it's a tracking hit without a store slug, try to attach it to the most recent visit of this visitor
+            $lastRecentVisit = \App\Models\Visit::where('visitor_id', $visitor->id)
+                ->where('started_at', '>', now()->subMinutes(30))
+                ->latest()
+                ->first();
+            
+            if ($lastRecentVisit) {
+                $visit = $lastRecentVisit;
+            }
+        }
 
         if (!$visit) {
+            $visit = $visitQuery->latest('started_at')->first();
+        }
+
+        if (!$visit) {
+            $referer = $request->headers->get('referer');
+            $refererHost = $referer ? parse_url($referer, PHP_URL_HOST) : null;
+            
+            // Kendi sitemizden geliyorsa (sayfa yenileme / sekme değiştirme) Referer saymayız.
+            if ($refererHost === $request->getHost()) {
+                $refererHost = null;
+            }
+            
+            $utmSource = $request->query('utm_source');
+
             $visit = \App\Models\Visit::create([
                 'visitor_id' => $visitor->id,
+                'store_id' => $storeId,
+                'referer_host' => $refererHost,
+                'utm_source' => $utmSource,
                 'started_at' => now(),
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),

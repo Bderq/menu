@@ -71,6 +71,7 @@ class CampaignResource extends Resource
                             ->columnSpanFull(),
                         FileUpload::make('image_path')
                             ->label('Kampanya Görseli (Opsiyonel)')
+                            ->disk('public')
                             ->image()
                             ->directory('campaigns')
                             ->maxSize(300)
