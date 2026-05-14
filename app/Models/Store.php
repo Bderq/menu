@@ -36,4 +36,9 @@ class Store extends Model
             ->withPivot('is_active')
             ->withTimestamps();
     }
+
+    public function guestMessages(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(GuestMessage::class);
+    }
 }

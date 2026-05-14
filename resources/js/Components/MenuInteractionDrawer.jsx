@@ -26,7 +26,8 @@ export default function MenuInteractionDrawer({ storeSlug, onFilterChange, venue
     });
 
     const [feedback, setFeedback] = useState('');
-    const [feedbackStatus, setFeedbackStatus] = useState('idle'); // idle, sending, success
+    const [feedbackStatus, setFeedbackStatus] = useState('idle'); // idle, sending, success, short, limited, error
+    const [isShaking, setIsShaking] = useState(false);
 
     const [track, setTrack] = useState(null);
     const [currentTimeMs, setCurrentTimeMs] = useState(0);
@@ -100,17 +101,51 @@ export default function MenuInteractionDrawer({ storeSlug, onFilterChange, venue
         onFilterChange(newFilters);
     };
 
-    const handleFeedbackSubmit = (e) => {
+    const handleFeedbackSubmit = async (e) => {
         e.preventDefault();
-        if (!feedback.trim()) return;
+        const cleanFeedback = feedback.trim();
+        if (!cleanFeedback) return;
+
+        // Client-side validation: min 10 characters
+        if (cleanFeedback.length < 10) {
+            setFeedbackStatus('short');
+            setIsShaking(true);
+            setTimeout(() => setIsShaking(false), 600);
+            setTimeout(() => setFeedbackStatus('idle'), 2000);
+            return;
+        }
 
         setFeedbackStatus('sending');
-        // Simulate API call
-        setTimeout(() => {
-            setFeedbackStatus('success');
-            setFeedback('');
-            setTimeout(() => setFeedbackStatus('idle'), 2000);
-        }, 1000);
+        
+        try {
+            const response = await fetch(`/api/${storeSlug}/message`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                },
+                body: JSON.stringify({ content: feedback })
+            });
+
+            if (response.status === 201) {
+                setFeedbackStatus('success');
+                setFeedback('');
+                setTimeout(() => setFeedbackStatus('idle'), 3000);
+            } else if (response.status === 429) {
+                const data = await response.json();
+                setFeedbackStatus('limited');
+                // 3 saniye sonra butonu tekrar aktif et ama uyarıyı göstermeye devam et ya da statik bırak
+                setTimeout(() => setFeedbackStatus('idle'), 5000);
+            } else {
+                setFeedbackStatus('error');
+                setTimeout(() => setFeedbackStatus('idle'), 3000);
+            }
+        } catch (error) {
+            console.error('Feedback error:', error);
+            setFeedbackStatus('error');
+            setTimeout(() => setFeedbackStatus('idle'), 3000);
+        }
     };
 
     return (
@@ -414,7 +449,11 @@ export default function MenuInteractionDrawer({ storeSlug, onFilterChange, venue
                                                     </div>
 
                                                     <form onSubmit={handleFeedbackSubmit} className="flex flex-col gap-6 flex-1">
-                                                        <div className="relative">
+                                                        <motion.div 
+                                                            className="relative"
+                                                            animate={isShaking ? { x: [-8, 8, -8, 8, -6, 6, 0] } : { x: 0 }}
+                                                            transition={{ duration: 0.5 }}
+                                                        >
                                                             <div className="absolute top-0 left-0 w-full h-full bg-pitch-black translate-x-2 translate-y-2"></div>
                                                             <textarea
                                                                 value={feedback}
@@ -423,17 +462,24 @@ export default function MenuInteractionDrawer({ storeSlug, onFilterChange, venue
                                                                 className="w-full h-48 bg-white border-4 border-pitch-black p-4 font-mono text-lg focus:outline-none relative z-10 placeholder:text-gray-400 focus:bg-yellow-50"
                                                                 required
                                                             />
-                                                        </div>
+                                                        </motion.div>
 
                                                         <button
                                                             type="submit"
                                                             disabled={feedbackStatus !== 'idle'}
                                                             className={`w-full py-5 font-heading text-2xl uppercase border-4 border-pitch-black shadow-[8px_8px_0_0_#000] flex items-center justify-center gap-3 transition-all active:translate-y-2 active:shadow-none hover:-translate-y-1 hover:shadow-[10px_10px_0_0_#000]
-                                                            ${feedbackStatus === 'success' ? 'bg-green-500 text-white' : 'bg-pub-gold text-pitch-black'}`}
-                                                        >
+                                                            ${feedbackStatus === 'success' ? 'bg-green-500 text-white' : 
+                                                              feedbackStatus === 'short' ? 'bg-red-500 text-white' :
+                                                              feedbackStatus === 'limited' ? 'bg-orange-500 text-white' :
+                                                              feedbackStatus === 'error' ? 'bg-red-500 text-white' :
+                                                              'bg-pub-gold text-pitch-black'}`}
+                                                         >
                                                             {feedbackStatus === 'idle' && <><Send size={24} strokeWidth={3} /> Yolla Gelsin</>}
                                                             {feedbackStatus === 'sending' && "..."}
+                                                            {feedbackStatus === 'short' && <><AlertTriangle size={24} /> EN AZ 10 HARF YAZ!</>}
                                                             {feedbackStatus === 'success' && <><Check size={24} /> İletildi!</>}
+                                                            {feedbackStatus === 'limited' && "LİMİTİN DOLDU"}
+                                                            {feedbackStatus === 'error' && "HATA OLUŞTU"}
                                                         </button>
                                                     </form>
                                                 </motion.div>
