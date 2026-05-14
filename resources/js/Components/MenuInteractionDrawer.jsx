@@ -118,21 +118,15 @@ export default function MenuInteractionDrawer({ storeSlug, onFilterChange, venue
             {/* FAB (Floating Action Button) */}
             <motion.button
                 initial={{ scale: 0 }}
-                animate={{ 
-                    scale: hasMusicPlaying ? [1, 1.08, 1] : 1 
-                }}
-                transition={{ 
-                    scale: hasMusicPlaying 
-                        ? { repeat: Infinity, duration: 2, ease: "easeInOut" }
-                        : { duration: 0.3 }
-                }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.3 }}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={onOpen}
                 className="fixed bottom-6 right-6 z-50 w-16 h-16 bg-pub-gold border-4 border-pitch-black shadow-[8px_8px_0_0_rgba(0,0,0,1)] flex items-center justify-center rounded-none rotate-3 hover:rotate-0 transition-transform duration-300"
                 aria-label="Menu Options"
             >
-                <Zap className={`w-8 h-8 text-pitch-black fill-current ${hasMusicPlaying ? 'animate-pulse' : ''}`} />
+                <Zap className="w-8 h-8 text-pitch-black fill-current" />
             </motion.button>
 
             {/* Drawer Overlay */}
