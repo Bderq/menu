@@ -74,9 +74,9 @@ export default function NowPlayingPeek({ storeSlug, isDrawerOpen, onMusicStatusC
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 300, opacity: 0 }}
                     transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                    className="fixed bottom-28 right-6 z-[90] pointer-events-none"
+                    className="fixed bottom-6 right-24 z-[90] pointer-events-none"
                 >
-                    <div className="bg-pitch-black border-4 border-white shadow-[8px_8px_0_0_rgba(0,0,0,1)] p-3 flex items-center gap-3 max-w-[280px] sm:max-w-[320px] -rotate-1 transform-gpu">
+                    <div className="bg-pitch-black border-4 border-white shadow-[8px_8px_0_0_rgba(0,0,0,1)] p-2 flex items-center gap-3 max-w-[240px] sm:max-w-[280px] rotate-1 transform-gpu h-16">
                         {/* Album Art Thumbnail */}
                         <div className="w-12 h-12 shrink-0 bg-pub-gold border-2 border-white flex items-center justify-center shadow-[2px_2px_0_0_rgba(255,255,255,0.3)] overflow-hidden">
                             {track.image ? (

@@ -52,7 +52,7 @@ Mevcut ilgili bileşenler:
 
 ### 4. Peek konumu ve yönü
 
-**Karar:** `fixed`, `bottom-6 right-6`, FAB'ın hemen üzerinde veya yanında. FAB'ın sol kenarından başlayarak sola doğru yatay kayma (`x: "0" → x: "-100%"` değil, tam tersi: `x: 200px → x: 0`). Peek bileşeni FAB ile aynı `z-index` katmanında ama FAB'ın önünde.
+**Karar:** `fixed`, `bottom-6 right-24` olarak ayarla (FAB'ın hemen solunda). FAB'ın sol kenarından başlayarak sola doğru yatay kayma (`x: 200px → x: 0`).
 
 **Gerekçe:** Sağdan geliyor, sola açılıyor hissi. Drawer'ın da sağdan soldan açılmasıyla tutarlı dil.
 

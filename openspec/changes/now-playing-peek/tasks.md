@@ -17,7 +17,7 @@
 - [x] 3.1 Peek şeridine albüm kapağı thumbnail'i ekle; resim yoksa müzik ikonu placeholder göster (spec: "Albüm kapağı mevcut / yok")
 - [x] 3.2 "NOW PLAYING" micro label, şarkı adı (büyük, heading font, truncate), sanatçı adı (mono font, küçük, truncate) ekle; mevcut drawer header'ındaki MTV stilini referans al
 - [x] 3.3 EQ bar animasyonunu ekle (3 dikey bar, `is_playing: true` olunca `height` loop animasyonu); mevcut `MenuInteractionDrawer.jsx` içindeki EQ barı referans al
-- [x] 3.4 Konumu `fixed bottom-24 right-6 z-[90]` olarak ayarla (FAB'ın üzerinde, drawer overlay'inin altında)
+- [x] 3.4 Konumu `fixed bottom-6 right-24 z-[90]` olarak ayarla (FAB'ın hemen solunda, drawer overlay'inin altında)
 - [x] 3.5 Mevcut tema token'larını kullan: `bg-pitch-black`, `text-pub-gold`, `font-heading`, `font-mono`, `border-white`; mevcut drawer header estetiğiyle uyumlu yap
 
 ## 4. FAB Pulse Animasyonu — MenuInteractionDrawer Güncellemesi
