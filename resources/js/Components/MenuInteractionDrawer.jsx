@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Filter, MessageSquare, Send, X, Check, Zap, AlertTriangle, Wheat, Egg, Milk, Bean, Nut, Droplets, Fish, HelpCircle, Leaf, Flame, FlaskConical, Flower, Music, ClipboardList } from 'lucide-react';
 
-export default function MenuInteractionDrawer({ storeSlug, onFilterChange, venueName = "MEKAN", isOpen, onOpen, onClose }) {
+export default function MenuInteractionDrawer({ storeSlug, onFilterChange, venueName = "MEKAN", isOpen, onOpen, onClose, hasMusicPlaying = false }) {
     const [activeTab, setActiveTab] = useState('filters'); // 'filters' | 'feedback'
     const [isAllergensOpen, setIsAllergensOpen] = useState(false);
     const [filters, setFilters] = useState({
@@ -118,14 +118,21 @@ export default function MenuInteractionDrawer({ storeSlug, onFilterChange, venue
             {/* FAB (Floating Action Button) */}
             <motion.button
                 initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
+                animate={{ 
+                    scale: hasMusicPlaying ? [1, 1.08, 1] : 1 
+                }}
+                transition={{ 
+                    scale: hasMusicPlaying 
+                        ? { repeat: Infinity, duration: 2, ease: "easeInOut" }
+                        : { duration: 0.3 }
+                }}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={onOpen}
-                className="fixed bottom-6 right-6 z-50 w-16 h-16 bg-pub-gold border-4 border-pitch-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center rounded-none rotate-3 hover:rotate-0 transition-transform duration-300"
+                className="fixed bottom-6 right-6 z-50 w-16 h-16 bg-pub-gold border-4 border-pitch-black shadow-[8px_8px_0_0_rgba(0,0,0,1)] flex items-center justify-center rounded-none rotate-3 hover:rotate-0 transition-transform duration-300"
                 aria-label="Menu Options"
             >
-                <Zap className="w-8 h-8 text-pitch-black fill-current" />
+                <Zap className={`w-8 h-8 text-pitch-black fill-current ${hasMusicPlaying ? 'animate-pulse' : ''}`} />
             </motion.button>
 
             {/* Drawer Overlay */}

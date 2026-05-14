@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as LucideIcons from 'lucide-react';
 
 import MenuInteractionDrawer from '@/Components/MenuInteractionDrawer';
+import NowPlayingPeek from '@/Components/NowPlayingPeek';
 
 import DefaultCampaignCard from '@/Components/Campaigns/DefaultCampaignCard';
 
@@ -37,6 +38,7 @@ export default function Index({ menuData = {}, store = null, likedProductIds = [
     const [activeFilters, setActiveFilters] = useState({ vegan: false, vegetarian: false, glutenFree: false });
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [selectedCampaign, setSelectedCampaign] = useState(null);
+    const [hasMusicPlaying, setHasMusicPlaying] = useState(false);
 
     // Analytics Tracking
     const { trackClick, toggleVote } = useTracking(
@@ -816,6 +818,13 @@ export default function Index({ menuData = {}, store = null, likedProductIds = [
                 isOpen={isDrawerOpen}
                 onOpen={() => setIsDrawerOpen(true)}
                 onClose={() => setIsDrawerOpen(false)}
+                hasMusicPlaying={hasMusicPlaying}
+            />
+
+            <NowPlayingPeek
+                storeSlug={store?.slug}
+                isDrawerOpen={isDrawerOpen}
+                onMusicStatusChange={setHasMusicPlaying}
             />
 
         </StreetLayout >
