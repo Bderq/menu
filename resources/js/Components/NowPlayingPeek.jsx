@@ -5,6 +5,7 @@ import { Music } from 'lucide-react';
 export default function NowPlayingPeek({ storeSlug, isDrawerOpen, onMusicStatusChange }) {
     const [track, setTrack] = useState(null);
     const [isPeeking, setIsPeeking] = useState(false);
+    const [hasPeekedOnce, setHasPeekedOnce] = useState(false); // New state to track if we've already peeked
     const [prevTrackId, setPrevTrackId] = useState(null);
     const peekTimerRef = useRef(null);
 
@@ -17,20 +18,22 @@ export default function NowPlayingPeek({ storeSlug, isDrawerOpen, onMusicStatusC
             if (data && data.is_playing) {
                 const trackId = `${data.artist}-${data.track}`;
                 
-                if (trackId !== prevTrackId) {
+                if (!hasPeekedOnce) {
                     setTrack(data);
                     setPrevTrackId(trackId);
+                    setHasPeekedOnce(true);
                     if (!isDrawerOpen) {
                         triggerPeek();
                     }
                 } else {
                     setTrack(data);
+                    // We don't trigger peek here anymore, keeping it stable
                 }
                 
                 if (onMusicStatusChange) onMusicStatusChange(true);
             } else {
                 setTrack(null);
-                setPrevTrackId(null);
+                // Removed: setPrevTrackId(null); // Keep the ID even if music stops to avoid re-triggering same song
                 setIsPeeking(false);
                 if (onMusicStatusChange) onMusicStatusChange(false);
             }
