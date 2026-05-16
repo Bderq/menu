@@ -2,9 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Filter, MessageSquare, Send, X, Check, Zap, AlertTriangle, Wheat, Egg, Milk, Bean, Nut, Droplets, Fish, HelpCircle, Leaf, Flame, FlaskConical, Flower, Music, ClipboardList } from 'lucide-react';
+import PollDrawerTab from './Polls/PollDrawerTab';
 
-export default function MenuInteractionDrawer({ storeSlug, onFilterChange, venueName = "MEKAN", isOpen, onOpen, onClose, hasMusicPlaying = false }) {
-    const [activeTab, setActiveTab] = useState('filters'); // 'filters' | 'feedback'
+export default function MenuInteractionDrawer({ storeSlug, onFilterChange, venueName = "MEKAN", isOpen, onOpen, onClose, hasMusicPlaying = false, visitorId, initialTab = 'filters', reviewInteractionId = null }) {
+    const [activeTab, setActiveTab] = useState(initialTab); // 'filters' | 'feedback' | 'survey'
+
+    useEffect(() => {
+        if (isOpen && initialTab) {
+            setActiveTab(initialTab);
+        }
+    }, [isOpen, initialTab]);
     const [isAllergensOpen, setIsAllergensOpen] = useState(false);
     const [filters, setFilters] = useState({
         vegan: false,
@@ -125,7 +132,10 @@ export default function MenuInteractionDrawer({ storeSlug, onFilterChange, venue
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
                 },
-                body: JSON.stringify({ content: feedback })
+                body: JSON.stringify({ 
+                    content: feedback,
+                    review_interaction_id: reviewInteractionId
+                })
             });
 
             if (response.status === 201) {
@@ -414,24 +424,11 @@ export default function MenuInteractionDrawer({ storeSlug, onFilterChange, venue
                                                     initial={{ opacity: 0, x: 20 }}
                                                     animate={{ opacity: 1, x: 0 }}
                                                     exit={{ opacity: 0, x: -20 }}
-                                                    className="h-full flex flex-col items-center justify-center text-center pb-20 relative"
                                                 >
-                                                    {/* Warning Icon */}
-                                                    <div className="w-24 h-24 mb-6 bg-pitch-black text-pub-gold flex items-center justify-center border-4 border-pub-gold shadow-[8px_8px_0_0_#000] rotate-3 relative overflow-hidden transition-transform duration-500 hover:rotate-12 hover:scale-110">
-                                                        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #000, #000 10px, #FFD700 10px, #FFD700 20px)' }} />
-                                                        <AlertTriangle size={48} strokeWidth={2} className="relative z-10" />
-                                                    </div>
-                                                    
-                                                    {/* Text Box */}
-                                                    <div className="bg-white border-4 border-pitch-black p-6 shadow-[8px_8px_0_0_var(--color-pub-gold)] -rotate-2 relative z-10 max-w-sm">
-                                                        <h3 className="font-heading text-3xl sm:text-4xl uppercase mb-3 leading-none text-pitch-black block">YAPIM AŞAMASINDA</h3>
-                                                        <div className="h-1 w-12 bg-pitch-black mx-auto mb-3 absolute top-0 left-0"></div>
-                                                        <div className="h-1 w-12 bg-pitch-black mx-auto mb-3 absolute bottom-0 right-0"></div>
-                                                        
-                                                        <p className="font-mono text-sm text-pitch-black/80 font-bold border-t-2 border-pitch-black/10 pt-3">
-                                                            Sizin için daha iyi hizmet verebilmek adına anket sistemimizi hazırlıyoruz. Çok yakında yayında!
-                                                        </p>
-                                                    </div>
+                                                    <PollDrawerTab 
+                                                        storeSlug={storeSlug} 
+                                                        visitorId={visitorId} 
+                                                    />
                                                 </motion.div>
                                             ) : (
                                                 <motion.div

@@ -7,6 +7,8 @@ import MenuInteractionDrawer from '@/Components/MenuInteractionDrawer';
 import NowPlayingPeek from '@/Components/NowPlayingPeek';
 
 import DefaultCampaignCard from '@/Components/Campaigns/DefaultCampaignCard';
+import PollPopup from '@/Components/Polls/PollPopup';
+import GoogleReviewPopup from '@/Components/GoogleReviewPopup';
 
 const Icon = ({ name, ...props }) => {
     const LucideIcon = LucideIcons[name] || LucideIcons.HelpCircle;
@@ -28,7 +30,7 @@ const getContrastColor = (hex) => {
     return luminance < 0.4 ? '#ffffff' : '#000000';
 };
 
-export default function Index({ menuData = {}, store = null, likedProductIds = [] }) {
+export default function Index({ menuData = {}, store = null, likedProductIds = [], visitorId, visitCount = 0, visitDaysCount = 0 }) {
     const [likedIds, setLikedIds] = useState(likedProductIds);
     const [mainTab, setMainTab] = useState('campaign'); // 'campaign' | 'drink' | 'food'
     const [activeMainCategory, setActiveMainCategory] = useState(null);
@@ -37,8 +39,10 @@ export default function Index({ menuData = {}, store = null, likedProductIds = [
     const [selectedOption, setSelectedOption] = useState(null);
     const [activeFilters, setActiveFilters] = useState({ vegan: false, vegetarian: false, glutenFree: false });
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [drawerTab, setDrawerTab] = useState('filters');
     const [selectedCampaign, setSelectedCampaign] = useState(null);
     const [hasMusicPlaying, setHasMusicPlaying] = useState(false);
+    const [reviewInteractionId, setReviewInteractionId] = useState(null);
 
     // Analytics Tracking
     const { trackClick, toggleVote } = useTracking(
@@ -819,6 +823,9 @@ export default function Index({ menuData = {}, store = null, likedProductIds = [
                 onOpen={() => setIsDrawerOpen(true)}
                 onClose={() => setIsDrawerOpen(false)}
                 hasMusicPlaying={hasMusicPlaying}
+                visitorId={visitorId}
+                initialTab={drawerTab}
+                reviewInteractionId={reviewInteractionId}
             />
 
             <NowPlayingPeek
@@ -827,6 +834,20 @@ export default function Index({ menuData = {}, store = null, likedProductIds = [
                 onMusicStatusChange={setHasMusicPlaying}
             />
 
+            <PollPopup storeSlug={store?.slug} visitorId={visitorId} />
+            <GoogleReviewPopup 
+                storeSlug={store?.slug}
+                visitCount={visitCount}
+                visitDaysCount={visitDaysCount}
+                googleReviewUrl={store?.google_review_url}
+                googleReviewQuestion={store?.google_review_question}
+                isTestMode={new URLSearchParams(window.location.search).has('test_review')}
+                onOpenSesVer={(id) => {
+                    setReviewInteractionId(id);
+                    setDrawerTab('feedback');
+                    setIsDrawerOpen(true);
+                }}
+            />
         </StreetLayout >
     );
 }

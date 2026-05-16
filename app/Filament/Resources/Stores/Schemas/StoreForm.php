@@ -37,6 +37,21 @@ class StoreForm
                             ->maxLength(1000),
                     ])
                     ->collapsed(),
+                \Filament\Schemas\Components\Section::make('Google Business')
+                    ->description('Set up Google review redirection for this branch.')
+                    ->schema([
+                        TextInput::make('google_review_url')
+                            ->label('Google Review URL')
+                            ->url()
+                            ->placeholder('https://g.page/r/isletme-id/review')
+                            ->maxLength(255),
+                        \Filament\Forms\Components\Textarea::make('google_review_question')
+                            ->label('Review Question')
+                            ->placeholder('Bu akşam iyi geçti mi? 🍺')
+                            ->rows(2)
+                            ->maxLength(255),
+                    ])
+                    ->collapsed(),
             ]);
     }
 }

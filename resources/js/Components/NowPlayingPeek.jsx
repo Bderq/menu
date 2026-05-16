@@ -45,7 +45,7 @@ export default function NowPlayingPeek({ storeSlug, isDrawerOpen, onMusicStatusC
     const [isPeeking, setIsPeeking] = useState(false);
     
     // Use refs to avoid closure staleness in setInterval
-    const hasPeekedOnceRef = useRef(false);
+    const lastPeekedTrackRef = useRef(null);
     const isDrawerOpenRef = useRef(isDrawerOpen);
     const peekTimerRef = useRef(null);
 
@@ -60,9 +60,13 @@ export default function NowPlayingPeek({ storeSlug, isDrawerOpen, onMusicStatusC
             const data = await response.json();
 
             if (data && data.is_playing) {
-                if (!hasPeekedOnceRef.current) {
+                // Check if the track has changed (or if it's the first load)
+                const currentTrackId = data.url || data.track;
+                
+                if (lastPeekedTrackRef.current !== currentTrackId) {
                     setTrack(data);
-                    hasPeekedOnceRef.current = true;
+                    lastPeekedTrackRef.current = currentTrackId;
+                    
                     if (!isDrawerOpenRef.current) {
                         triggerPeek();
                     }

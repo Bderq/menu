@@ -39,7 +39,7 @@ class AdminPanelProvider extends PanelProvider
             ->font('Outfit')
             ->brandLogo(asset('images/logo.png'))
             ->brandLogoHeight('4rem')
-            ->brandName('')
+            ->brandName('Crash')
             ->favicon(asset('images/logo.png'))
             ->darkMode(true)
             ->renderHook(
