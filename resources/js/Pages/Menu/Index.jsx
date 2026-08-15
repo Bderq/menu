@@ -9,6 +9,7 @@ import NowPlayingPeek from '@/Components/NowPlayingPeek';
 import DefaultCampaignCard from '@/Components/Campaigns/DefaultCampaignCard';
 import PollPopup from '@/Components/Polls/PollPopup';
 import GoogleReviewPopup from '@/Components/GoogleReviewPopup';
+import WelcomePoster from '@/Components/WelcomePoster';
 
 const Icon = ({ name, ...props }) => {
     const LucideIcon = LucideIcons[name] || LucideIcons.HelpCircle;
@@ -30,7 +31,7 @@ const getContrastColor = (hex) => {
     return luminance < 0.4 ? '#ffffff' : '#000000';
 };
 
-export default function Index({ menuData = {}, store = null, likedProductIds = [], visitorId, visitCount = 0, visitDaysCount = 0 }) {
+export default function Index({ menuData = {}, store = null, likedProductIds = [], visitorId, visitCount = 0, visitDaysCount = 0, activePoster = null }) {
     const [likedIds, setLikedIds] = useState(likedProductIds);
     const [mainTab, setMainTab] = useState('campaign'); // 'campaign' | 'drink' | 'food'
     const [activeMainCategory, setActiveMainCategory] = useState(null);
@@ -834,6 +835,7 @@ export default function Index({ menuData = {}, store = null, likedProductIds = [
                 onMusicStatusChange={setHasMusicPlaying}
             />
 
+            <WelcomePoster poster={activePoster} />
             <PollPopup storeSlug={store?.slug} visitorId={visitorId} />
             <GoogleReviewPopup 
                 storeSlug={store?.slug}

@@ -219,7 +219,7 @@ class CampaignService
              $discount = ($originalPrice * $campaign->value) / 100;
              $newPrice = $originalPrice - $discount;
         } elseif ($campaign->type->value === \App\Enums\CampaignType::BUNDLE->value) {
-             $newPrice = $campaign->value;
+             $newPrice = $originalPrice;
         } elseif ($campaign->type->value === \App\Enums\CampaignType::COLLECTIVE->value) {
              $option['collective_tiers'] = $campaign->tiers;
              if (!empty($campaign->tiers) && isset($campaign->tiers[0]['price'])) {
@@ -232,7 +232,7 @@ class CampaignService
         $option['campaign_type'] = $campaign->type->value;
 
         // Apply price only if it's not 'x_get_y' and is cheaper/valid
-        if ($campaign->type->value !== \App\Enums\CampaignType::X_GET_Y->value && ($newPrice < $originalPrice || in_array($campaign->type->value, [\App\Enums\CampaignType::BUNDLE->value, \App\Enums\CampaignType::COLLECTIVE->value]))) {
+        if ($campaign->type->value !== \App\Enums\CampaignType::X_GET_Y->value && $campaign->type->value !== \App\Enums\CampaignType::BUNDLE->value && ($newPrice < $originalPrice || $campaign->type->value === \App\Enums\CampaignType::COLLECTIVE->value)) {
             $option['campaign_price'] = $newPrice;
         }
     }
@@ -250,7 +250,7 @@ class CampaignService
                  $discount = ($originalPrice * $campaign->value) / 100;
                  $newPrice = $originalPrice - $discount;
             } elseif ($campaign->type->value === \App\Enums\CampaignType::BUNDLE->value) {
-                 $newPrice = $campaign->value;
+                 $newPrice = $originalPrice;
             } elseif ($campaign->type->value === \App\Enums\CampaignType::COLLECTIVE->value) {
                  $product['collective_tiers'] = $campaign->tiers;
                  if (!empty($campaign->tiers) && isset($campaign->tiers[0]['price'])) {
@@ -261,7 +261,7 @@ class CampaignService
             $product['campaign_name'] = $campaign->display_title;
             $product['campaign_type'] = $campaign->type->value;
 
-            if ($campaign->type->value !== \App\Enums\CampaignType::X_GET_Y->value && ($newPrice < $originalPrice || in_array($campaign->type->value, [\App\Enums\CampaignType::BUNDLE->value, \App\Enums\CampaignType::COLLECTIVE->value]))) {
+            if ($campaign->type->value !== \App\Enums\CampaignType::X_GET_Y->value && $campaign->type->value !== \App\Enums\CampaignType::BUNDLE->value && ($newPrice < $originalPrice || $campaign->type->value === \App\Enums\CampaignType::COLLECTIVE->value)) {
                 $product['campaign_price'] = $newPrice;
             }
         } else {

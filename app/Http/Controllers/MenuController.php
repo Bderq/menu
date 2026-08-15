@@ -39,13 +39,16 @@ class MenuController extends Controller
             $visitDaysCount = max(2, $visitDaysCount);
         }
 
+        $activePoster = \App\Models\Poster::getActive();
+
         return Inertia::render('Menu/Index', [
             'menuData' => $menuData,
             'store' => $store,
             'likedProductIds' => $likedProductIds,
             'visitorId' => $visitorId,
             'visitCount' => $visitCount,
-            'visitDaysCount' => $visitDaysCount
+            'visitDaysCount' => $visitDaysCount,
+            'activePoster' => $activePoster,
         ]);
     }
 

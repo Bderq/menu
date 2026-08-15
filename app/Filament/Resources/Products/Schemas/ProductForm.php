@@ -113,7 +113,8 @@ class ProductForm
                                                         ->live()
                                                         ->dehydrated(false)
                                                         ->afterStateHydrated(function ($component, $record) use ($store) {
-                                                            $component->state($record?->stores->contains($store->id) ?? false);
+                                                            $storeRelation = $record?->stores->find($store->id);
+                                                            $component->state($storeRelation?->pivot?->is_active ?? false);
                                                         }),
                                                     
                                                     Section::make('Şubeye Özel Porsiyonlar')
@@ -206,14 +207,21 @@ class ProductForm
                                         $syncData = [];
 
                                         foreach ($stores as $store) {
-                                            $isActive = $state["store_{$store->id}_active"] ?? false;
+                                            $stateKey = "store_{$store->id}_active";
                                             
-                                            if ($isActive) {
+                                            if (array_key_exists($stateKey, $state)) {
+                                                $isActive = (bool) ($state[$stateKey] ?? false);
+                                            } else {
+                                                $existingPivot = $record->stores->find($store->id);
+                                                $isActive = $existingPivot?->pivot?->is_active ?? false;
+                                            }
+                                            
+                                            $syncData[$store->id] = [
+                                                'is_active' => $isActive,
+                                            ];
+
+                                            if ($isActive && array_key_exists("store_{$store->id}_portions", $state)) {
                                                 $portions = $state["store_{$store->id}_portions"] ?? [];
-                                                
-                                                $syncData[$store->id] = [
-                                                    'is_active' => true,
-                                                ];
 
                                                 // Save Portions
                                                 \App\Models\StoreProductPortion::where('product_id', $record->id)

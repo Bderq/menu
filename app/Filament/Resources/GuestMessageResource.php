@@ -36,9 +36,9 @@ class GuestMessageResource extends Resource
                 
                 TextColumn::make('content')
                     ->label('Mesaj')
-                    ->limit(50)
                     ->searchable()
-                    ->wrap(),
+                    ->wrap()
+                    ->tooltip(fn (GuestMessage $record): string => $record->content ?? ''),
 
                 TextColumn::make('ip_address')
                     ->label('IP Adresi')
