@@ -60,5 +60,7 @@ class TrackingHitValidationTest extends TestCase
             ->assertStatus(400);
 
         $this->assertDatabaseCount('interactions', 0);
+        // No throwaway visitor is created for a cookie-less tracking call.
+        $this->assertDatabaseCount('visitors', 1);
     }
 }

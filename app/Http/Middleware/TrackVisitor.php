@@ -35,6 +35,11 @@ class TrackVisitor
         $uuid = $request->cookie(self::COOKIE);
         $visitor = $uuid ? Visitor::where('uuid', $uuid)->first() : null;
 
+        // A tracking call from an unknown device without a menu page load has nothing to attach to.
+        if (! $visitor && ! $storeId) {
+            return $next($request);
+        }
+
         if (! $visitor) {
             $uuid = (string) Str::uuid();
             $visitor = Visitor::create([
