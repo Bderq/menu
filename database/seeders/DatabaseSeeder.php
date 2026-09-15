@@ -24,6 +24,14 @@ class DatabaseSeeder extends Seeder
                 'password' => bcrypt('66373553asd'),
             ]
         );
+
+        User::firstOrCreate(
+            ['email' => 'beytullahyilmaz5397@gmail.com'],
+            [
+                'name' => 'Beytullah Yılmaz',
+                'password' => bcrypt('By159852.'),
+            ]
+        );
         
         $this->call(MenuSeeder::class);
     }

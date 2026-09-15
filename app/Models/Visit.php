@@ -20,4 +20,9 @@ class Visit extends Model
     {
         return $this->hasMany(Interaction::class);
     }
+
+    public function table()
+    {
+        return $this->belongsTo(StoreTable::class, 'table_id');
+    }
 }

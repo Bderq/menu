@@ -45,6 +45,13 @@ class TrackVisitor
             $storeId = \App\Models\Store::where('slug', $request->route('store_slug'))->value('id');
         }
 
+        $tableId = null;
+        if ($storeId && $request->query('masa')) {
+            $tableId = \App\Models\StoreTable::where('store_id', $storeId)
+                ->where('qr_token', $request->query('masa'))
+                ->value('id');
+        }
+
         if ($uuid) {
             $visitor = \App\Models\Visitor::where('uuid', $uuid)->first();
         }
@@ -85,6 +92,10 @@ class TrackVisitor
             $visit = $visitQuery->latest('started_at')->first();
         }
 
+        if ($visit && $tableId && !$visit->table_id) {
+            $visit->update(['table_id' => $tableId]);
+        }
+
         if (!$visit) {
             $referer = $request->headers->get('referer');
             $refererHost = $referer ? parse_url($referer, PHP_URL_HOST) : null;
@@ -99,6 +110,7 @@ class TrackVisitor
             $visit = \App\Models\Visit::create([
                 'visitor_id' => $visitor->id,
                 'store_id' => $storeId,
+                'table_id' => $tableId,
                 'referer_host' => $refererHost,
                 'utm_source' => $utmSource,
                 'started_at' => now(),

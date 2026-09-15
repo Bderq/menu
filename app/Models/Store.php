@@ -41,4 +41,9 @@ class Store extends Model
     {
         return $this->hasMany(GuestMessage::class);
     }
+
+    public function tables(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(StoreTable::class);
+    }
 }

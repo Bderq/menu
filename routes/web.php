@@ -46,8 +46,12 @@ Route::middleware([\App\Http\Middleware\TrackVisitor::class])->group(function ()
     });
 });
 
-Route::get('/', function () { 
-    // Temporary redirect to gorukle for dev 
-    return redirect('/gorukle'); 
+Route::get('/', function () {
+    // Temporary redirect to gorukle for dev
+    return redirect('/gorukle');
 });
+
+Route::get('/store-tables/print', \App\Http\Controllers\StoreTablePrintController::class)
+    ->middleware('auth')
+    ->name('store-tables.print');
 
