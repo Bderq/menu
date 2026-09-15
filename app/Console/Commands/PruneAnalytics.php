@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\Log;
 class PruneAnalytics extends Command
 {
     protected $signature = 'analytics:prune
-        {--days=90 : Keep interactions, visits and review interactions newer than this many days}
+        {--days=90 : Keep interactions and visits newer than this many days}
         {--visitors-days=180 : Keep visitors seen within this many days (older ones are removed only if they have no visits, votes or review records)}
         {--dry-run : Report counts without deleting}';
 
-    protected $description = 'Prune old analytics data (interactions, visits, orphan visitors, review interactions)';
+    protected $description = 'Prune old analytics data (interactions, visits, orphan visitors). Google review interactions are kept: the review funnel widget reports all-time totals.';
 
     protected const CHUNK = 5000;
 
@@ -30,7 +30,6 @@ class PruneAnalytics extends Command
         $steps = [
             'interactions' => DB::table('interactions')->where('created_at', '<', $cutOff),
             'visits' => DB::table('visits')->where('started_at', '<', $cutOff),
-            'google_review_interactions' => DB::table('google_review_interactions')->where('showed_at', '<', $cutOff),
             'visitors' => DB::table('visitors')
                 ->where('last_seen_at', '<', $visitorCutOff)
                 ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('visits')->whereColumn('visits.visitor_id', 'visitors.id'))
