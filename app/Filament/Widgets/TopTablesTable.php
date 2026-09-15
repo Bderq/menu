@@ -3,31 +3,36 @@
 namespace App\Filament\Widgets;
 
 use App\Models\StoreTable;
+use App\Support\AnalyticsRange;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget as BaseWidget;
 
 class TopTablesTable extends BaseWidget
 {
+    use InteractsWithPageFilters;
+
     protected static ?int $sort = 4;
 
     protected int|string|array $columnSpan = 'full';
 
-    protected static ?string $heading = 'En Çok Taranan Masalar';
-
     public function table(Table $table): Table
     {
+        $range = AnalyticsRange::fromFilters($this->pageFilters);
+
         return $table
+            ->heading('En Çok Taranan Masalar · '.$range->label())
             ->query(
                 StoreTable::query()
                     ->with('store')
                     ->withCount([
-                        'visits as visits_7d_count' => function ($query) {
-                            $query->where('visits.started_at', '>', now()->subDays(7));
-                        },
+                        'visits as visits_range_count' => fn ($query) => $query->whereBetween('visits.started_at', [$range->from, $range->to]),
                         'visits as visits_total_count',
                     ])
+                    ->when($range->storeId, fn ($q) => $q->where('store_id', $range->storeId))
                     ->having('visits_total_count', '>', 0)
+                    ->orderByDesc('visits_range_count')
                     ->orderByDesc('visits_total_count')
                     ->limit(10)
             )
@@ -41,8 +46,8 @@ class TopTablesTable extends BaseWidget
                     ->badge()
                     ->color('danger')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('visits_7d_count')
-                    ->label('Son 7 Gün')
+                Tables\Columns\TextColumn::make('visits_range_count')
+                    ->label('Aralıkta')
                     ->badge()
                     ->color('info')
                     ->sortable(),
