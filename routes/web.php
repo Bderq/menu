@@ -21,7 +21,10 @@ RateLimiter::for('poll-vote', function (Request $request) {
 });
 
 Route::middleware([\App\Http\Middleware\TrackVisitor::class])->group(function () {
-    Route::get('/api/{store_slug}/now-playing', [MenuController::class, 'nowPlaying'])->name('api.now_playing');
+    // 10s polling — must not touch visitor/visit tracking on every tick
+    Route::get('/api/{store_slug}/now-playing', [MenuController::class, 'nowPlaying'])
+        ->withoutMiddleware(\App\Http\Middleware\TrackVisitor::class)
+        ->name('api.now_playing');
     Route::post('/api/{store_slug}/message', [GuestMessageController::class, 'store'])->middleware('throttle:guest-message');
     
     // Google Review Interaction Funnel
@@ -50,6 +53,8 @@ Route::get('/', function () {
     // Temporary redirect to gorukle for dev
     return redirect('/gorukle');
 });
+
+Route::post('/telegram/webhook', \App\Http\Controllers\TelegramWebhookController::class)->name('telegram.webhook');
 
 Route::get('/store-tables/print', \App\Http\Controllers\StoreTablePrintController::class)
     ->middleware('auth')

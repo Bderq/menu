@@ -84,6 +84,72 @@ class SpotifyService
     }
 
     /**
+     * Search tracks for a store. Returns a list of {uri, name, artist, url}.
+     */
+    public function searchTracks(\App\Models\Store $store, string $query, int $limit = 3): array
+    {
+        $token = $this->getAccessToken($store);
+
+        if (!$token) {
+            return [];
+        }
+
+        $response = Http::withToken($token)->get('https://api.spotify.com/v1/search', [
+            'q' => $query,
+            'type' => 'track',
+            'limit' => $limit,
+            'market' => 'TR',
+        ]);
+
+        if (!$response->successful()) {
+            Log::warning("Spotify search failed for store: {$store->name}", ['error' => $response->body()]);
+            return [];
+        }
+
+        return collect($response->json('tracks.items', []))->map(fn (array $track) => [
+            'uri' => $track['uri'],
+            'name' => $track['name'],
+            'artist' => collect($track['artists'] ?? [])->pluck('name')->implode(', '),
+            'url' => $track['external_urls']['spotify'] ?? null,
+        ])->values()->all();
+    }
+
+    /**
+     * Add a track to the store's playback queue.
+     *
+     * @return array{ok: bool, error: ?string}  error is one of: no_device, premium_required, unauthorized, other
+     */
+    public function addToQueue(\App\Models\Store $store, string $trackUri): array
+    {
+        $token = $this->getAccessToken($store);
+
+        if (!$token) {
+            return ['ok' => false, 'error' => 'unauthorized'];
+        }
+
+        $response = Http::withToken($token)
+            ->post('https://api.spotify.com/v1/me/player/queue?' . http_build_query(['uri' => $trackUri]));
+
+        if ($response->successful()) {
+            return ['ok' => true, 'error' => null];
+        }
+
+        Log::warning("Spotify add to queue failed for store: {$store->name}", [
+            'status' => $response->status(),
+            'error' => $response->body(),
+        ]);
+
+        $reason = strtoupper((string) $response->json('error.reason'));
+
+        return ['ok' => false, 'error' => match (true) {
+            $response->status() === 404, $reason === 'NO_ACTIVE_DEVICE' => 'no_device',
+            $reason === 'PREMIUM_REQUIRED' => 'premium_required',
+            $response->status() === 401, $response->status() === 403 => 'unauthorized',
+            default => 'other',
+        }];
+    }
+
+    /**
      * Format the track data for the frontend
      */
     private function formatTrackData(array $track, bool $isPlaying): array

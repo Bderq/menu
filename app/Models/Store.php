@@ -46,4 +46,9 @@ class Store extends Model
     {
         return $this->hasMany(StoreTable::class);
     }
+
+    public function hasSpotify(): bool
+    {
+        return $this->spotify_client_id && $this->spotify_client_secret && $this->spotify_refresh_token;
+    }
 }

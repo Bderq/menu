@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessGuestMessage;
 use App\Models\GuestMessage;
 use App\Models\Store;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
 
 class GuestMessageController extends Controller
 {
@@ -35,23 +33,7 @@ class GuestMessageController extends Controller
                 ]);
         }
 
-        // Telegram bildirimi — hata olursa müşteriyi etkileme, sadece logla
-        try {
-            $botToken = config('services.telegram.bot_token');
-            $chatId = config('services.telegram.chat_id');
-
-            $text = "📣 *{$store->name}* - Yeni Sesverin Mesajı\n\n"
-                . "{$message->content}\n\n"
-                . now()->format('d.m.Y H:i');
-
-            Http::timeout(5)->post("https://api.telegram.org/bot{$botToken}/sendMessage", [
-                'chat_id'    => $chatId,
-                'text'       => $text,
-                'parse_mode' => 'Markdown',
-            ]);
-        } catch (\Exception $e) {
-            Log::warning('Telegram bildirimi gönderilemedi: ' . $e->getMessage());
-        }
+        ProcessGuestMessage::dispatch($message);
 
         return response()->json([
             'message' => 'Mesajınız başarıyla iletildi.',
