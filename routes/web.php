@@ -3,22 +3,7 @@
 use App\Http\Controllers\MenuController;
 use App\Http\Controllers\GuestMessageController;
 use App\Http\Controllers\PollController;
-use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
-RateLimiter::for('guest-message', function (Request $request) {
-    return Limit::perDay(2)->by($request->ip() . $request->route('store_slug'))->response(function () {
-        return response()->json(['message' => 'Bugün için limitine ulaştın.'], 429);
-    });
-});
-
-RateLimiter::for('poll-vote', function (Request $request) {
-    return Limit::perMinute(5)->by($request->ip() . $request->route('store_slug'))->response(function () {
-        return response()->json(['message' => 'Çok fazla oy kullandın.'], 429);
-    });
-});
 
 Route::middleware([\App\Http\Middleware\TrackVisitor::class])->group(function () {
     // 10s polling — must not touch visitor/visit tracking on every tick
