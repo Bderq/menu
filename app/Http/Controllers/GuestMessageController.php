@@ -35,17 +35,22 @@ class GuestMessageController extends Controller
                 ]);
         }
 
-        // WhatsApp Bot bildirimi — hata olursa müşteriyi etkileme, sadece logla
+        // Telegram bildirimi — hata olursa müşteriyi etkileme, sadece logla
         try {
-            Http::timeout(5)
-                ->withHeaders(['X-Webhook-Secret' => env('WPBOT_WEBHOOK_SECRET')])
-                ->post(env('WPBOT_WEBHOOK_URL'), [
-                    'store'    => $store->name,
-                    'message'  => $message->content,
-                    'sent_at'  => now()->format('d.m.Y H:i'),
-                ]);
+            $botToken = config('services.telegram.bot_token');
+            $chatId = config('services.telegram.chat_id');
+
+            $text = "📣 *{$store->name}* - Yeni Sesverin Mesajı\n\n"
+                . "{$message->content}\n\n"
+                . now()->format('d.m.Y H:i');
+
+            Http::timeout(5)->post("https://api.telegram.org/bot{$botToken}/sendMessage", [
+                'chat_id'    => $chatId,
+                'text'       => $text,
+                'parse_mode' => 'Markdown',
+            ]);
         } catch (\Exception $e) {
-            Log::warning('WA Bot bildirimi gönderilemedi: ' . $e->getMessage());
+            Log::warning('Telegram bildirimi gönderilemedi: ' . $e->getMessage());
         }
 
         return response()->json([
