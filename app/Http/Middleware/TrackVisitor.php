@@ -2,63 +2,42 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Store;
+use App\Models\StoreTable;
+use App\Models\Visit;
+use App\Models\Visitor;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class TrackVisitor
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
+    public const COOKIE = 'qr_menu_visitor_id';
+
     public function handle(Request $request, Closure $next): Response
     {
-        $cookieName = 'qr_menu_visitor_id';
-
-        // Skip non-page requests
-        if ($request->is('_debugbar*', 'telescope*', 'horizon*', 'admin*', 'storage/*') || 
-            preg_match('/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|map)$/i', $request->path())) {
+        if ($this->isUntrackedPath($request) || $this->isBot($request)) {
             return $next($request);
         }
 
-        // Detect Bots/Crawlers
-        $userAgent = $request->userAgent();
-        $bots = [
-            'Googlebot', 'Bingbot', 'Slurp', 'DuckDuckBot', 'Baiduspider', 'YandexBot', 'facebot', 'facebookexternalhit',
-            'ia_archiver', 'WhatsApp', 'TelegramBot', 'Twitterbot', 'LinkedInBot', 'Pinterestbot', 'Slackbot', 'Discordbot',
-            'Google-Structured-Data-Testing-Tool', 'CriteoBot', 'Applebot', 'HeadlessChrome', 'UptimeRobot'
-        ];
-        
-        foreach ($bots as $bot) {
-            if (stripos($userAgent, $bot) !== false) {
+        $storeId = null;
+        if ($slug = $request->route('store_slug')) {
+            $storeId = $this->resolveStoreId($slug);
+
+            // Unknown slug (scanners hitting /.env, /wp-login.php, …): never open a record.
+            if (! $storeId) {
                 return $next($request);
             }
         }
 
-        $uuid = $request->cookie($cookieName);
-        $visitor = null;
-        $storeId = null;
+        $uuid = $request->cookie(self::COOKIE);
+        $visitor = $uuid ? Visitor::where('uuid', $uuid)->first() : null;
 
-        if ($request->route('store_slug')) {
-            $storeId = \App\Models\Store::where('slug', $request->route('store_slug'))->value('id');
-        }
-
-        $tableId = null;
-        if ($storeId && $request->query('masa')) {
-            $tableId = \App\Models\StoreTable::where('store_id', $storeId)
-                ->where('qr_token', $request->query('masa'))
-                ->value('id');
-        }
-
-        if ($uuid) {
-            $visitor = \App\Models\Visitor::where('uuid', $uuid)->first();
-        }
-
-        if (!$visitor) {
-            $uuid = (string) \Illuminate\Support\Str::uuid();
-            $visitor = \App\Models\Visitor::create([
+        if (! $visitor) {
+            $uuid = (string) Str::uuid();
+            $visitor = Visitor::create([
                 'uuid' => $uuid,
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -68,71 +47,95 @@ class TrackVisitor
             $visitor->update(['last_seen_at' => now()]);
         }
 
-        // Manage Visit (Session)
-        $visit = null;
-        $visitQuery = \App\Models\Visit::where('visitor_id', $visitor->id)
-            ->where('started_at', '>', now()->subMinutes(30));
-
-        // If explicitly provided via route or we can infer it from the visitor's last active visit
-        if ($storeId) {
-            $visitQuery->where('store_id', $storeId);
-        } else {
-            // If it's a tracking hit without a store slug, try to attach it to the most recent visit of this visitor
-            $lastRecentVisit = \App\Models\Visit::where('visitor_id', $visitor->id)
-                ->where('started_at', '>', now()->subMinutes(30))
-                ->latest()
-                ->first();
-            
-            if ($lastRecentVisit) {
-                $visit = $lastRecentVisit;
-            }
+        $tableId = null;
+        if ($storeId && $request->query('masa')) {
+            $tableId = StoreTable::where('store_id', $storeId)
+                ->where('qr_token', $request->query('masa'))
+                ->value('id');
         }
 
-        if (!$visit) {
-            $visit = $visitQuery->latest('started_at')->first();
-        }
+        // Live session: most recent visit within the inactivity window
+        // (for the same store when the route names one).
+        $visit = Visit::where('visitor_id', $visitor->id)
+            ->where('started_at', '>', now()->subMinutes((int) config('analytics.session_minutes', 30)))
+            ->when($storeId, fn ($q) => $q->where('store_id', $storeId))
+            ->latest('started_at')
+            ->first();
 
-        if ($visit && $tableId && !$visit->table_id) {
+        if ($visit && $tableId && ! $visit->table_id) {
             $visit->update(['table_id' => $tableId]);
         }
 
-        if (!$visit) {
-            $referer = $request->headers->get('referer');
-            $refererHost = $referer ? parse_url($referer, PHP_URL_HOST) : null;
-            
-            // Kendi sitemizden geliyorsa (sayfa yenileme / sekme değiştirme) Referer saymayız.
-            if ($refererHost === $request->getHost()) {
-                $refererHost = null;
-            }
-            
-            $utmSource = $request->query('utm_source');
-
-            $visit = \App\Models\Visit::create([
+        // Only a menu page load (store known) may open a new visit. A tracking hit
+        // arriving after the window closed is dropped instead of creating a store-less visit.
+        if (! $visit && $storeId) {
+            $visit = Visit::create([
                 'visitor_id' => $visitor->id,
                 'store_id' => $storeId,
                 'table_id' => $tableId,
-                'referer_host' => $refererHost,
-                'utm_source' => $utmSource,
+                'referer_host' => $this->externalRefererHost($request),
+                'utm_source' => $request->query('utm_source'),
                 'started_at' => now(),
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
             ]);
         }
 
-        // Store IDs in request for controller/logging access
         $request->merge([
             'tracking_visitor_id' => $visitor->id,
-            'tracking_visit_id' => $visit->id,
+            'tracking_visit_id' => $visit?->id,
             'tracking_uuid' => $uuid,
         ]);
 
         $response = $next($request);
 
-        // Ensure cookie is set/extended (1 year)
-        if ($request->cookie($cookieName) !== $uuid) {
-            $response->headers->setCookie(cookie()->forever($cookieName, $uuid));
+        if ($request->cookie(self::COOKIE) !== $uuid) {
+            $response->headers->setCookie(cookie()->forever(self::COOKIE, $uuid));
         }
 
         return $response;
+    }
+
+    protected function isUntrackedPath(Request $request): bool
+    {
+        return $request->is('_debugbar*', 'telescope*', 'horizon*', 'admin*', 'storage/*')
+            || preg_match('/\.(ico|png|jpg|jpeg|gif|svg|webp|css|js|woff|woff2|ttf|map|txt|xml|php|env)$/i', $request->path());
+    }
+
+    protected function isBot(Request $request): bool
+    {
+        $userAgent = trim((string) $request->userAgent());
+
+        if ($userAgent === '') {
+            return true;
+        }
+
+        foreach ((array) config('analytics.bot_user_agents', []) as $fragment) {
+            if (stripos($userAgent, $fragment) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function resolveStoreId(string $slug): ?int
+    {
+        $id = Cache::remember(
+            'analytics:store_id_by_slug:'.$slug,
+            now()->addMinutes(5),
+            fn () => Store::where('slug', $slug)->value('id') ?? 0,
+        );
+
+        return $id ?: null;
+    }
+
+    protected function externalRefererHost(Request $request): ?string
+    {
+        $referer = $request->headers->get('referer');
+        $host = $referer ? parse_url($referer, PHP_URL_HOST) : null;
+
+        // Same-site referer (reload / tab switch) is not a source.
+        return ($host && $host !== $request->getHost()) ? $host : null;
     }
 }
