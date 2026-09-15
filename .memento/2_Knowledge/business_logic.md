@@ -49,9 +49,12 @@
 > Requests arrive **only from the menu's "Ses Verin" form**. Messages
 > typed into the Telegram group itself are not read by the system.
 >
-> Guest messages are rate-limited to **2 per day per IP per store**
-> (`guest-message` limiter in `routes/web.php`) — this bites during
-> testing.
+> Guest messages are rate-limited to **2 per day per visitor per store**,
+> keyed by the `qr_menu_visitor_id` cookie (falls back to IP when the
+> cookie is missing), plus a **20/hour per IP** ceiling against abuse.
+> The limiter lives in `AppServiceProvider::boot()`, not `routes/web.php`
+> — see decisions.md 2026-09-15. Keying by IP alone was wrong: everyone
+> on a venue's wifi shares one public IP and therefore one quota.
 
 ## Open questions (couldn't resolve from code)
 - <TODO: is there a canonical "business day" boundary anywhere (e.g. for

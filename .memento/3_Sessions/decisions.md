@@ -167,6 +167,36 @@
 - **Affects:** current_task.md → Sırada (Floyd testi); `stores` tablosu
 - **Supersedes:** none
 
+### 2026-09-15 Fix: `route:cache` rate limiter tanımlarını devre dışı bıraktı (kendi yol açtığımız regresyon)
+- **Symptom:** "Ses Verin" formu bazı kullanıcılarda **500** vermeye
+  başladı; log'da `Rate limiter [guest-message] is not defined`. Anket
+  oylaması (`poll-vote`) da aynı durumdaydı.
+- **Root cause:** Performans için `php artisan route:cache` çalıştırıldı.
+  Route cache açıkken `routes/web.php` her istekte yüklenmez; limiter'lar
+  o dosyanın tepesinde `RateLimiter::for(...)` ile tanımlı olduğu için
+  hiç kaydedilmiyor, `throttle:guest-message` middleware'i de bulamıyor.
+- **Fix:** Tanımlar `AppServiceProvider::boot()`'a taşındı. **Kural:**
+  bu projede route cache kullanıldığı sürece `RateLimiter::for()`,
+  `Route::bind()` gibi çağrılar route dosyasında durmamalı.
+- **Affects:** `app/Providers/AppServiceProvider.php`, `routes/web.php`
+- **Supersedes:** none
+
+### 2026-09-15 Decision: Sesverin limiti IP yerine ziyaretçi çerezinde
+- **Chose:** Günlük 2 mesaj hakkı `qr_menu_visitor_id` çerezi başına
+  sayılır (çerez yoksa IP'ye düşer); ayrıca IP başına saatte 20 mesaj
+  tavanı eklendi.
+- **Why:** Kullanıcı PC'den hakkını doldurup telefondan denediğinde
+  "hakkın bitti" aldı — dükkânın wifisindeki herkes tek public IP'den
+  çıktığı için **tüm mekân** günde 2 mesajla sınırlıydı; akşam
+  yoğunluğunda üçüncü müşteriden sonra kimse istek gönderemezdi.
+  Mobil veride de CGNAT yüzünden benzer çakışma olabiliyor. Çerez
+  silinerek aşılabilir ama kafe için kabul edilebilir; IP tavanı tek
+  kişinin grubu boğmasını engelliyor. Günlük hak kullanıcı tercihiyle
+  2'de bırakıldı.
+- **Affects:** `.memento/2_Knowledge/business_logic.md` ("Ses Verin"
+  bölümü); `app/Providers/AppServiceProvider.php`
+- **Supersedes:** none
+
 ### 2026-09-15 Fix: now-playing polling'i her 10 sn'de ziyaretçi takibi tetikliyordu
 - **Symptom:** Site gözle görülür yavaşladı (yük 8.1, menü sayfası 5.2 sn).
   Nginx log'unda son 200 isteğin 80'i `/api/{store}/now-playing`.

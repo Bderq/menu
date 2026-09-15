@@ -21,6 +21,14 @@ Aynı oturumda ayrıca:
   5.2 sn → 0.8 sn, `now-playing` 1.3 sn → 0.12 sn.
 - Git remote URL'i `bderq/menu` → `Bderq/menu` olarak düzeltildi.
 
+Oturumun sonunda "Ses Verin" bozuldu diye bildirildi; iki ayrı sorun
+çıktı ve ikisi de düzeltildi: (1) `route:cache` yüzünden rate limiter
+tanımları devre dışı kalmış ve form 500 veriyordu — tanımlar
+`AppServiceProvider`'a taşındı (`b5c6a29`); (2) limit IP bazlı olduğu
+için dükkân wifisindeki herkes tek kotayı paylaşıyordu — çerez bazlına
+çevrildi, IP tavanı eklendi (`5dd605e`). `storage/backups/` de
+`.gitignore`'a alındı (`d9e621a`).
+
 ## Sırada / Next
 - **Floyd'da gerçek sıraya ekleme testi** yapılmadı: Floyd'un Spotify'ında
   aktif cihaz çalarken menüden bir şarkı isteği gönderilip butona
