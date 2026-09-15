@@ -32,6 +32,27 @@
 > Confirm with the user whether that's intentional (unfinished/internal
 > feature) before treating the README's list as authoritative.
 
+## "Ses Verin" guest messages can be song requests (2026-09-15)
+> Every guest message goes through `ProcessGuestMessage` (queued). Gemini
+> classifies it: if it is **not** a song request — or the store has no
+> Spotify credentials — a plain notification goes to Telegram and nothing
+> else happens. If it **is** a song request, the extracted artist/title is
+> searched on **that store's own** Spotify account and a `song_requests`
+> row is created with the top 3 candidates.
+>
+> A request is only queued when a human presses the Telegram button —
+> nothing is ever added to playback automatically. Status flow:
+> `pending → processing → queued | dismissed` (plus `not_found` when
+> Spotify returns no match). `processing` is a lock, not a resting state:
+> a failed attempt returns the row to `pending` so the buttons stay live.
+>
+> Requests arrive **only from the menu's "Ses Verin" form**. Messages
+> typed into the Telegram group itself are not read by the system.
+>
+> Guest messages are rate-limited to **2 per day per IP per store**
+> (`guest-message` limiter in `routes/web.php`) — this bites during
+> testing.
+
 ## Open questions (couldn't resolve from code)
 - <TODO: is there a canonical "business day" boundary anywhere (e.g. for
   analytics/reporting cutoffs), or does everything use calendar midnight

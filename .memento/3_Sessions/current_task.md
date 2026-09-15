@@ -1,31 +1,47 @@
 # Current Task
 
 ## Şu An / Now
-Memento bellek mimarisi (Bderq/memento) qr-menu projesine kuruldu ve
-proje-özel içerikle dolduruldu: `tech_stack.md`, `dev_guidelines.md`,
-`brand_voice.md`, `business_logic.md` koddan otomatik dolduruldu ve
-doğrulandı; `prompt_patterns.md` kullanıcı tercihleriyle (terse yanıt,
-kod değişikliğinden önce plan+onay) dolduruldu. Upstream repo iki kez
-kontrol edildi ve yeni eklenen `memento-reindex` ile `memento-close`
-skill'leri projeye kuruldu. Şu an 4 skill kurulu: `memento-init`,
-`memento-sync`, `memento-reindex`, `memento-close`. Bu oturumda qr-menu
-kod tabanında henüz bir özellik/bugfix çalışması yapılmadı — sadece
-memento kurulumu ve doğrulaması yapıldı.
+2026-09-15 oturumu: "Ses Verin" misafir mesajları üzerine **şarkı isteği
+sistemi** kuruldu ve canlıda uçtan uca doğrulandı (commit `c8d4194`).
+Akış: misafir mesajı → kuyruk job'ı → Gemini mesajın şarkı isteği olup
+olmadığını belirler ve sanatçı/şarkı çıkarır → mağazanın kendi Spotify
+hesabında aranır → Telegram grubuna butonlu bildirim → butona basınca o
+mağazanın Spotify çalma sırasına eklenir. Görükle'de gerçek istek iki kez
+sıraya eklenerek doğrulandı; Floyd'da tespit + buton akışı çalıştı,
+"Yok say" ile kapatıldı.
+
+Aynı oturumda ayrıca:
+- Misafir bildirimleri **WhatsApp bot'undan Telegram'a taşındı** (commit
+  `f6bd757`); `whatsapp-bot.service` durduruldu ve açılıştan kaldırıldı.
+- Bekleyen **StoreTables** (masa/QR yazdırma) çalışması commitlendi
+  (`0c0b8bb`).
+- **Performans:** site yavaşlamıştı; `artisan optimize` cache'leri
+  oluşturuldu, WA bot + Chrome (~950 MB) kapatıldı, `now-playing`
+  polling'i `TrackVisitor`'dan çıkarıldı. Yük 8.1 → 1.6, menü sayfası
+  5.2 sn → 0.8 sn, `now-playing` 1.3 sn → 0.12 sn.
+- Git remote URL'i `bderq/menu` → `Bderq/menu` olarak düzeltildi.
 
 ## Sırada / Next
-- `.memento/2_Knowledge/business_logic.md`'deki açık sorular kullanıcıya
-  sorulup netleştirilmeli: (1) analytics/raporlama için özel bir "iş
-  günü" sınırı var mı, (2) aynı üründe birden fazla kampanya çakışırsa
-  hangisi kazanıyor (ilk eşleşen / en yüksek indirim / stacking)?
+- **Floyd'da gerçek sıraya ekleme testi** yapılmadı: Floyd'un Spotify'ında
+  aktif cihaz çalarken menüden bir şarkı isteği gönderilip butona
+  basılmalı. (Görükle'de doğrulandı, Floyd'da değil.)
+- **Adminlere yönerge**: Telegram grubundaki diğer adminler için tek
+  sayfalık kullanım açıklaması hazırlanması konuşuldu, henüz yazılmadı.
+- **Repo dışı kurulum**: `/etc/systemd/system/qr-menu-queue.service` ve
+  `qr-menu-telegram.service` ile `.env`'deki `GEMINI_*` / `TELEGRAM_*`
+  değerleri git'te değil. Sunucu yeniden kurulursa elle oluşturulmalı.
+- Önceki oturumdan devreden sorular hâlâ açık: business_logic.md'deki
+  (1) analytics için "iş günü" sınırı, (2) aynı üründe çakışan kampanya
+  kuralı; ayrıca `CampaignType::COLLECTIVE`'in README'de eksik olması.
 - `prompt_patterns.md`'deki "birden fazla kez düzeltilen konular" bölümü
-  hâlâ boş — ileride tekrar eden düzeltmeler oldukça buraya eklenmeli.
-- `app/Enums/CampaignType.php`'deki `COLLECTIVE` tipinin README'de
-  dokümante edilmemiş olması kullanıcıya bildirildi; kasıtlı mı
-  (yarım/iç özellik) yoksa README mi eksik, netleştirilmedi.
-- Sıradaki gerçek iş: kullanıcının qr-menu üzerinde talep edeceği asıl
-  özellik/bugfix görevi — henüz belirtilmedi.
+  hâlâ boş.
 
 ## Açık Sorular / Blockers
-- Yukarıdaki iki business-logic sorusu (iş günü sınırı, kampanya çakışma
-  kuralı) kullanıcıdan yanıt bekliyor.
-- `COLLECTIVE` kampanya tipinin README'de eksik olması netleştirilmeli.
+- **Telegram grubundan şarkı isteği alınsın mı?** Kullanıcı gruba "massive
+  attack çal" yazdı ve bir şey olmadı; sistem grup mesajlarını okumuyor
+  (tasarım gereği, istekler yalnızca menüden gelir). Gruptan da istek
+  kabul edilsin mi, karara bağlanmadı.
+- **Sunucuda 8 adet eski Claude oturumu** ~1.5 GB RAM tutuyor, swap 1.2 GB.
+  Kullanıcı bunları kapatmayı şimdilik istemedi; yoğun saatte yavaşlık
+  tekrarlarsa ilk buraya bakılmalı.
+- Devreden: iş günü sınırı, kampanya çakışma kuralı, `COLLECTIVE` tipi.
