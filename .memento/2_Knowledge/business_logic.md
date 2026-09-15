@@ -57,8 +57,10 @@
 > on a venue's wifi shares one public IP and therefore one quota.
 
 ## Open questions (couldn't resolve from code)
-- <TODO: is there a canonical "business day" boundary anywhere (e.g. for
-  analytics/reporting cutoffs), or does everything use calendar midnight
-  except campaign scheduling?>
+- ~~business day boundary~~ → **Resolved 2026-09-15:** a "business day" starts
+  at **06:00** local time. `MenuController` counts distinct visit days as
+  `DATE(started_at - INTERVAL '6 hours')` to decide whether the Google review
+  popup may show (2nd distinct business day). Analytics reports will use the
+  same 06:00 shift for day/hour buckets (PLAN-analytics-insights §0).
 - <TODO: any pricing rules around combining multiple active campaigns on
   the same product — first-match, stacking, or highest-discount-wins?>

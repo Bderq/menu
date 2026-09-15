@@ -14,9 +14,25 @@ dump, uploads tar, worktree patch).
    yeni widget'larla tazele)
 3. `www-data` crontab'ına `* * * * * cd /var/www/qr-menu && /usr/bin/php artisan schedule:run`
    (spotify-agent ve erp-crash-test için zaten aynı satır var)
-4. İlk temizlik: `php artisan analytics:prune --visitors-days=30` (dry-run: 35.152
-   ölü ziyaretçi; 180 günle 0 çünkü hepsi Nisan–Ağustos arası)
-5. `/admin/analytics` sayfasının canlıda gözle doğrulanması (filtre formu + trend grafiği)
+4. `/admin/analytics` sayfasının canlıda gözle doğrulanması (filtre formu + trend grafiği)
+   (login gerektiği için Claude açamadı)
+5. ~~İlk prune~~ → **iptal**: kullanıcı prune yerine tam sıfırlama tercih etti
+   (aşağıdaki insights planı §8). Cron satırı yine de eklenmeli (schedule tanımlı).
+
+**Sonraki iş: `docs/PLAN-analytics-insights.md`** — kullanıcı "hepsini beğendim, hepsi
+için plan yap" dedi, plan yazıldı ve commitlendi (`e698cdc`), **uygulama başlamadı**.
+Kullanıcının kuralı: "Her şeyi netleştirmeden başlama." Planın §10'daki 5 açık karar
+cevaplanmadan ve §7'deki 3 şüphe doğrulanmadan kod yazılmayacak.
+İçerik: 5 alışkanlık başlığı (yoğunluk, keşif, tercih, kampanya/mesaj, sadakat),
+`interactions.meta` json + yeni olaylar (product_view, filter, drawer_open, tab,
+campaign_impression), Google review hunisi düzeltmesi, "Davranış" adlı ikinci panel
+sayfası, en sonda tam sıfırlama (guest_messages ve song_requests korunur).
+
+**Google review hunisi neden yanlış** (bu oturumda bulundu, henüz düzeltilmedi):
+`GoogleReviewPopup.handleGoogleRedirect` önce `handleDismiss()` çağırıyor → Google'a
+giden herkes `accepted` sonra `dismissed` oluyor (6 accepted vs 2 redirected-dismissed).
+"Görüldü" işareti yalnızca Hayır/X'te yazıldığı için cevapsız kapatan aynı kişiye
+tekrar gösteriliyor (988 kişi, 1.828 gösterim, 584 cevapsız `showed`).
 
 Bilinen: `tests/Feature/ProductCreateTest` önceden de kırık (`data.category_id`
 form hatası), bu oturumla ilgisiz.
@@ -52,13 +68,11 @@ için dükkân wifisindeki herkes tek kotayı paylaşıyordu — çerez bazlına
 `.gitignore`'a alındı (`d9e621a`).
 
 ## Sırada / Next
-- **Analitik deploy adımları** (yukarıdaki 1–5) tamamlanmalı.
-- **Ürün detayı için `view` + süre olayı** (plan kapsam dışı bırakıldı):
-  şu an yalnızca kategori heartbeat'i ve ürün/kampanya `click` var.
-- Kampanya tıklaması iki yerden tetikleniyor (`Index.jsx:396` ve `:445`);
-  çift sayım ihtimali kontrol edilmeli (6.000 kampanya vs 4.135 ürün tıklaması).
+- **Yeni chat:** önce hardening deploy adımları 1–4 (kullanıcı komutları çalıştırır
+  veya izin verir), sonra `PLAN-analytics-insights.md` §10 kararları alınır, §7
+  şüpheleri doğrulanır, ardından §9 commit sırası (1→8) uygulanır, en son §8 sıfırlama.
 - Parmak izi 32 bit basit hash; aynı model iPhone'lar çakışabilir, birleştirme
-  mantığı gözden geçirilebilir.
+  mantığı gözden geçirilebilir (insights planı kapsamı dışında, ayrı karar).
 - **Floyd'da gerçek sıraya ekleme testi** yapılmadı: Floyd'un Spotify'ında
   aktif cihaz çalarken menüden bir şarkı isteği gönderilip butona
   basılmalı. (Görükle'de doğrulandı, Floyd'da değil.)
@@ -74,6 +88,11 @@ için dükkân wifisindeki herkes tek kotayı paylaşıyordu — çerez bazlına
   hâlâ boş.
 
 ## Açık Sorular / Blockers
+- **Insights planı §10 kararları** (müzik etkisi sütunu, ayrı Davranış sayfası,
+  ürün detay süresi 600 sn kırpma, tam vs yumuşak sıfırlama, Floyd review URL'i).
+- **Deploy izni:** `migrate --force`, `optimize`, `filament:optimize`, crontab
+  komutları auto-mode sınıflandırıcısı tarafından "Production Deploy" diye
+  engellendi; kullanıcı elle çalıştıracak ya da izin verecek.
 - **Telegram grubundan şarkı isteği alınsın mı?** Kullanıcı gruba "massive
   attack çal" yazdı ve bir şey olmadı; sistem grup mesajlarını okumuyor
   (tasarım gereği, istekler yalnızca menüden gelir). Gruptan da istek

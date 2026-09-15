@@ -265,3 +265,41 @@
   veritabanını sıfırlayacaktı.
 - **Affects:** `phpunit.xml`, `tests/TestCase.php`
 - **Supersedes:** none
+
+
+### 2026-09-15 Decision: Analitik içgörü planı — birim "oturum/masa", prune yerine tam sıfırlama
+- **Context:** Kullanıcı analitik sistemini "taş gibi" yapıp neyin ölçülebileceğine
+  karar vermek, sonra ziyaretçileri sıfırlayıp temiz başlamak istedi. Google review
+  hunisinin hatalı olduğunu bildirdi; kök neden bulundu (aşağıdaki Fix kaydı).
+- **Chose:** `docs/PLAN-analytics-insights.md` yazıldı; 5 alışkanlık başlığının
+  hepsi kapsamda. Analiz birimi **oturum ve masa**, kişi değil (çerez/parmak izi
+  kusurlu). Yeni olaylar tek `interactions` tablosuna `meta` json ile; yeni tablo
+  yok. İki panel sayfası: Analitik (günlük) + Davranış (derin). **Prune ile
+  kademeli temizlik yerine**, kod deploy edilip 2–3 gün doğru veri aktıktan sonra
+  ziyaretçiye bağlı tüm tablolar TRUNCATE CASCADE ile sıfırlanacak;
+  `guest_messages` ve `song_requests` korunur. Uygulama, §10 kararları ve §7
+  doğrulamaları bitmeden **başlamaz** (kullanıcı kuralı).
+- **Why:** `visitors` silmek cascade ile visits/interactions/votes/poll_votes/
+  google_review_interactions'ı da siler; review verisi zaten hatalı olduğu için
+  korumaya değmez, temiz başlangıç daha dürüst. Prune günlük bakım olarak kalır.
+- **Affects:** `docs/PLAN-analytics-insights.md`; ileride `interactions`,
+  `guest_messages`, `visits.ended_at`, `GoogleReviewPopup.jsx`, panel sayfaları
+- **Supersedes:** "2026-09-15 Decision: Analitik sertleştirme" kaydındaki
+  "ilk temizlik `analytics:prune --visitors-days=30`" adımı → iptal, yerine tam sıfırlama.
+
+### 2026-09-15 Fix (tespit, henüz uygulanmadı): Google review hunisi yanlış sayıyor
+- **Symptom:** Widget'ta 6 "Evet", 2 "Google'a yönlenme" ama yönlenenler
+  `dismissed` durumunda; 1.828 gösterim ama 988 kişi; 584 cevapsız `showed`.
+- **Root cause:** (1) `GoogleReviewPopup.handleGoogleRedirect` önce
+  `handleDismiss()` çağırıyor, o da PATCH `status=dismissed` gönderiyor → Google'a
+  giden herkes accepted→dismissed oluyor. (2) `localStorage` "görüldü" işareti
+  yalnızca Hayır/X'te konuyor; cevapsız kapatan kişi ertesi gün yeniden görüyor,
+  sunucu tarafında tekilleştirme yok. (3) Widget tüm zamanlara bakıyor, tarih/şube
+  filtresi yok; yalnızca Görükle'de URL tanımlı.
+- **Fix (planlandı, PLAN-analytics-insights §3):** Google tıklamasında dismissed
+  gönderme; `showed` başarılı olunca işareti hemen koy + sunucuda 30 gün
+  `visitor_id+store_id` tekilleştirme; "cevapsız" ayrı durum; widget aralık+şube.
+- **Affects:** `resources/js/Components/GoogleReviewPopup.jsx`,
+  `app/Http/Controllers/GoogleReviewInteractionController.php`,
+  `app/Filament/Widgets/GoogleReviewStatsWidget.php`
+- **Supersedes:** none
