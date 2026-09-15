@@ -1,6 +1,28 @@
 # Current Task
 
 ## Şu An / Now
+2026-09-15 (akşam) oturumu: **analitik sertleştirme** — `docs/PLAN-analytics-hardening.md`
+Phase 1–4 kodlandı, test edildi ve commitlendi (`a07b57b`..`5c1b8b2`).
+Canlıda `config:cache` yenilendi (yeni `config/analytics.php` yüklenmeden
+`/tracking/hit` 18:29–18:41 arası 500 verdi; düzeltildi, doğrulandı).
+Yedekler: `storage/backups/qr_menu_db_full_20260915_182821.dump` (+ analytics-only
+dump, uploads tar, worktree patch).
+
+**Canlıda henüz yapılmayan deploy adımları** (izin gerektirdi):
+1. `php artisan migrate --force` → `2026_09_15_180000_add_analytics_indexes` bekliyor
+2. `php artisan optimize && php artisan filament:optimize` (route/filament cache'i
+   yeni widget'larla tazele)
+3. `www-data` crontab'ına `* * * * * cd /var/www/qr-menu && /usr/bin/php artisan schedule:run`
+   (spotify-agent ve erp-crash-test için zaten aynı satır var)
+4. İlk temizlik: `php artisan analytics:prune --visitors-days=30` (dry-run: 35.152
+   ölü ziyaretçi; 180 günle 0 çünkü hepsi Nisan–Ağustos arası)
+5. `/admin/analytics` sayfasının canlıda gözle doğrulanması (filtre formu + trend grafiği)
+
+Bilinen: `tests/Feature/ProductCreateTest` önceden de kırık (`data.category_id`
+form hatası), bu oturumla ilgisiz.
+
+---
+Önceki oturum (2026-09-15 gündüz):
 2026-09-15 oturumu: "Ses Verin" misafir mesajları üzerine **şarkı isteği
 sistemi** kuruldu ve canlıda uçtan uca doğrulandı (commit `c8d4194`).
 Akış: misafir mesajı → kuyruk job'ı → Gemini mesajın şarkı isteği olup
@@ -30,6 +52,13 @@ için dükkân wifisindeki herkes tek kotayı paylaşıyordu — çerez bazlına
 `.gitignore`'a alındı (`d9e621a`).
 
 ## Sırada / Next
+- **Analitik deploy adımları** (yukarıdaki 1–5) tamamlanmalı.
+- **Ürün detayı için `view` + süre olayı** (plan kapsam dışı bırakıldı):
+  şu an yalnızca kategori heartbeat'i ve ürün/kampanya `click` var.
+- Kampanya tıklaması iki yerden tetikleniyor (`Index.jsx:396` ve `:445`);
+  çift sayım ihtimali kontrol edilmeli (6.000 kampanya vs 4.135 ürün tıklaması).
+- Parmak izi 32 bit basit hash; aynı model iPhone'lar çakışabilir, birleştirme
+  mantığı gözden geçirilebilir.
 - **Floyd'da gerçek sıraya ekleme testi** yapılmadı: Floyd'un Spotify'ında
   aktif cihaz çalarken menüden bir şarkı isteği gönderilip butona
   basılmalı. (Görükle'de doğrulandı, Floyd'da değil.)

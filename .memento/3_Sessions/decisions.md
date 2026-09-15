@@ -212,3 +212,56 @@
   sayfa isteğinde güncelleniyor).
 - **Affects:** `routes/web.php`
 - **Supersedes:** none
+
+
+### 2026-09-15 Decision: Analitik sertleştirme — bot/bilinmeyen slug ziyaret açmaz, prune + indeks + filtreli panel
+- **Context:** Analitik incelemesi: son 7 günde 6.113 ziyaretin yalnızca
+  1.238'inde etkileşim vardı; 1.890 ziyaret şubesizdi; 94.894 ziyaretçinin
+  75.981'i hiçbir ziyarete bağlı değildi. Kaynaklar: (1) `/{store_slug}`
+  tek segmentli her yolu (`/.env`, `/phpinfo.php`) yakalayıp kayıt açıyordu,
+  (2) `TrackVisitor` hem route grubunda hem `bootstrap/app.php` web grubunda
+  ekliydi → `/` yönlendirmesi dahil her web isteği şubesiz kayıt üretiyordu,
+  (3) bot listesinde curl/HealthCheck/python yoktu, (4) `analytics:prune`
+  hiç zamanlanmamıştı ve `visitors` tablosunu temizlemiyordu, (5) `visits`
+  tablosunda PK dışında indeks yoktu.
+- **Chose:** Mağaza bulunamazsa hiç kayıt açılmaz; tracking çağrısı 30 dk
+  penceresi dışındaysa yeni (şubesiz) ziyaret açmaz; tanınan çerezi ve şubesi
+  olmayan tracking çağrısı ziyaretçi de açmaz. `TrackVisitor` yalnızca route
+  grubunda (global web grubundan çıkarıldı). Bot listesi `config/analytics.php`.
+  `hit` ucu doğrulanır (422). `analytics:prune` günlük 04:30, `--days=90`
+  (interactions, visits), `--visitors-days=180` (yalnızca ziyareti/oyu/review
+  kaydı olmayan ziyaretçiler), Google review etkileşimlerine dokunmaz.
+  Panel: `AnalyticsDashboard` Filament `Dashboard` + `HasFiltersForm`
+  (24s/7g/30g/özel + şube); `AnalyticsRange` + `AnalyticsService`; ort. süre
+  yalnızca heartbeat'li oturumlara bölünür; trend grafiği.
+- **Why:** Panel kartları 4–5 kat şişikti; gerçek müşteri davranışı bot
+  gürültüsünde kayboluyordu. Şubesiz ziyaret üretimini kaynağında kesmek,
+  raporlarda filtrelemekten daha güvenilir.
+- **Affects:** `app/Http/Middleware/TrackVisitor.php`, `bootstrap/app.php`,
+  `config/analytics.php`, `app/Console/Commands/PruneAnalytics.php`,
+  `routes/console.php`, `app/Filament/Pages/AnalyticsDashboard.php`,
+  `app/Filament/Widgets/*`, `app/Services/AnalyticsService.php`,
+  `app/Support/AnalyticsRange.php`, `docs/PLAN-analytics-hardening.md`
+- **Supersedes:** "2026-09-15 Fix: now-playing polling" kaydındaki
+  "gruptan çıkarmak yetmez, global web grubunda da ekli" notu — artık
+  yalnızca route grubunda; `withoutMiddleware` hâlâ çalışır ama global
+  ekleme yok.
+
+### 2026-09-15 Decision: Test paketi ayrı Postgres veritabanı kullanır (`qr_menu_test`)
+- **Context:** `php artisan test` sunucuda **üretim** veritabanına bağlanıyordu:
+  `bootstrap/cache/config.php` (config:cache) phpunit.xml'deki sqlite ayarını
+  eziyor. `RefreshDatabase` → `migrate:fresh` yalnızca `APP_ENV=production`
+  onay istediği için (non-interactive'de vazgeçti) veri silinmedi.
+  Ayrıca `MenuController` Postgres'e özgü SQL (`INTERVAL '6 hours'`)
+  kullandığı için sqlite'ta zaten çalışmıyor.
+- **Chose:** phpunit.xml → `pgsql` + `qr_menu_test` (sahibi `qr_menu_user`,
+  `sudo -u postgres createdb -O qr_menu_user qr_menu_test` ile oluşturuldu).
+  `tests/TestCase::setUpTraits` yalnızca `:memory:` veya `*_test` adlı
+  veritabanına izin verir, aksi halde `RuntimeException`.
+  Sunucuda çalıştırma: `APP_CONFIG_CACHE=/nonexistent/c.php
+  APP_ROUTES_CACHE=/nonexistent/r.php APP_EVENTS_CACHE=/nonexistent/e.php
+  php artisan test` (cache'i devre dışı bırakır, config:clear gerekmez).
+- **Why:** Config cache temizlenseydi ilk `php artisan test` üretim
+  veritabanını sıfırlayacaktı.
+- **Affects:** `phpunit.xml`, `tests/TestCase.php`
+- **Supersedes:** none
